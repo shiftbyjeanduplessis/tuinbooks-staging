@@ -295,27 +295,12 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
   document.documentElement.classList.remove('desktop-warm-start-pending');
   </script>
 
-  <link rel="stylesheet" href="stability-repair-v59694.css?v=60.3.5-exact-v6011-calendar-production">
-  <link rel="stylesheet" href="schedule-exact-canary-v6035.css?v=60.3.5-exact-v6011-calendar-production">
-  <style id="schedule-action-authority-v60513">#weeklyScheduleBoard .schedule-actions-v6010{display:none!important}</style>
-  <link rel="stylesheet" href="work-consolidated-v6021.css?v=60.3.5-exact-v6011-calendar-production">
-  <link rel="stylesheet" href="billing-completed-work-v6031.css?v=60.3.5-exact-v6011-calendar-production">
-  <link rel="stylesheet" href="demo-showroom-v60417.css?v=60.4.18-demo-direct-workspace">
-  <link rel="stylesheet" href="mobile-profiles-v60430.css?v=60.4.30">
-
-<style id="tuinbooks-v60735-schedule-toolbar-retirement">
-#view-schedule #scheduleToolbarV6006{display:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
-</style>
-
-<style id="tuinbooks-v6066-hide-legacy-onboarding">
-  /* Schedule onboarding belongs under Business, not on the calendar. Keep any
-     historical observer-created node hidden without mutating the Schedule DOM. */
-  #openOnboardingMasterImportV60420,
-  #openScheduleOnboardingMasterImportV60420,
-  #view-schedule > .onboarding-import-entry-v60420,
-  #view-schedule [data-open-onboarding-workbook],
-  #view-schedule [data-onboarding-import-shortcut] { display:none !important; }
-</style>
+  <link rel="stylesheet" href="stability-repair-v59694.css?v=60.0.4-schedule-stage-1a-scope-bind">
+  <link rel="stylesheet" href="consolidation-v6000.css?v=60.0.5-schedule-stage-1b-operations">
+  <link rel="stylesheet" href="consolidation-v6002.css?v=60.0.5-schedule-stage-1b-operations">
+  <link rel="stylesheet" href="consolidation-v6003.css?v=60.0.5-schedule-stage-1b-operations">
+  <link rel="stylesheet" href="consolidation-v6005.css?v=60.0.5-schedule-stage-1b-operations">
+  <link rel="stylesheet" href="consolidation-v6010.css?v=60.0.10-schedule-actions-mobile-note">
 </head>
 <body class="desktop-body" data-app="desktop">
   <section id="backendGate" class="backend-gate" aria-live="polite">
@@ -823,7 +808,6 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
           <p>Manage recurring service, contact details, billing and site notes.</p>
         </div>
         <div class="heading-actions">
-          <button class="button secondary" type="button" id="toggleClientSetupV6037">Setup issues</button>
           <button class="button secondary" id="bulkBillingProfileBtnV59396">Bulk Billing Profile</button>
           <button class="button secondary" id="openSpreadsheetImporterBtn">Import spreadsheet</button>
           <button class="button secondary" id="openImporterBtn">Import from photo</button>
@@ -892,29 +876,25 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
                 <label>Reporting notes<input id="clientReportNotes"></label>
               </div>
             </section>
-            <div class="form-section-title span-two"><span class="eyebrow">Billing</span><h3>Invoice setup</h3></div>
-            <label class="span-two">Invoice from <span class="required-marker">*</span><select id="clientBillingProfileV59396" required></select><small>Determines which company name, banking details and invoice numbering are used.</small></label>
-            <label>Monthly fee<input id="clientMonthlyFee" type="number" min="0" step="1"></label>
-            <label>Invoice cycle<select id="clientInvoiceCycleMode"><option value="business_default">Use business invoice cycle</option><option value="custom_monthly">Custom monthly cycle</option><option value="on_completion">Invoice on completion</option></select><small>Controls when the invoice draft is prepared for office review.</small></label>
-            <label id="clientInvoiceCycleSummaryWrapV58963" class="span-two client-cycle-summary-v6037">Cycle summary<input id="clientInvoiceCycleSummaryV58963" readonly tabindex="-1"><small id="clientInvoiceCycleHelpV58963">Uses the business default.</small></label>
+            <div class="form-section-title span-two"><span class="eyebrow">Billing</span><h3>Charges and invoice timing</h3></div><label class="span-two">Billing Profile <span class="required-marker">*</span><select id="clientBillingProfileV59396" required></select><small>The legal entity that issues this customer’s quotes, invoices and statements.</small></label><label>Monthly fee<input id="clientMonthlyFee" type="number" min="0" step="1"></label>
+            <label>Billing arrangement<select id="clientBillingArrangement"><option value="Per visit">Per visit</option><option value="Monthly fixed fee">Monthly fixed fee</option><option value="Recurring package">Recurring package</option><option value="Quote-based">Quote-based</option><option value="Ad hoc">Ad hoc</option><option value="Not classified">Not classified</option></select></label>
+            <label class="hidden" aria-hidden="true">Service start date<input id="clientServiceStartDate" type="date" tabindex="-1"></label>
+            <label>Invoice cycle<select id="clientInvoiceCycleMode"><option value="business_default">Use business invoice cycle</option><option value="custom_monthly">Custom monthly cycle</option><option value="on_completion">Invoice on completion</option></select><small>Monthly cycles prepare a draft for office review. They never send automatically.</small></label>
+            <label id="clientInvoiceCycleSummaryWrapV58963">Cycle summary<input id="clientInvoiceCycleSummaryV58963" readonly tabindex="-1"><small id="clientInvoiceCycleHelpV58963">Uses the business default.</small></label>
             <label id="clientCustomInvoiceDayWrapV58963" class="hidden">Draft day of month<input id="clientCustomInvoiceDayV58963" type="number" min="1" max="31" step="1"><small>If the month is shorter, month-end is used.</small></label>
             <label id="clientCustomPaymentDueDayWrapV58963" class="hidden">Payment due day<input id="clientCustomPaymentDueDayV58963" type="number" min="1" max="31" step="1"><small>If this is before the draft day, it falls in the next month.</small></label>
-            <label class="hidden" aria-hidden="true">Billing arrangement<select id="clientBillingArrangement" tabindex="-1"><option value="Per visit">Per visit</option><option value="Monthly fixed fee">Monthly fixed fee</option><option value="Recurring package">Recurring package</option><option value="Quote-based">Quote-based</option><option value="Ad hoc">Ad hoc</option><option value="Not classified">Not classified</option></select></label>
-            <label class="hidden" aria-hidden="true">Service start date<input id="clientServiceStartDate" type="date" tabindex="-1"></label>
             <select id="clientInvoiceTiming" class="hidden" tabindex="-1" aria-hidden="true"><option value="business_default">Business default</option><option value="on_completion">On completion</option></select>
             <input id="clientPaymentTermsDays" type="hidden" tabindex="-1" aria-hidden="true">
-            <label class="hidden" aria-hidden="true">First billing period<select id="clientFirstBillingRule" tabindex="-1"><option value="prorate_visits">Prorate by scheduled visits</option><option value="full_month">Charge the full monthly amount</option><option value="per_completed_visit">Charge for completed visits only</option><option value="carry_next_month">Carry the partial period into next month</option><option value="custom_amount">Use a custom first invoice amount</option></select></label>
-            <label id="clientFirstInvoiceAmountWrap" class="hidden" aria-hidden="true">Custom first invoice amount (R)<input id="clientFirstInvoiceAmount" type="number" min="0" step="0.01" tabindex="-1"></label>
-            <div class="form-section-title span-two"><span class="eyebrow">Service</span><h3>Recurring service</h3></div>
-            <label>Frequency<select id="clientFrequency"><option>Weekly</option><option>Fortnightly</option><option>Monthly</option><option>Ad hoc</option><option>Seasonal</option><option>Custom</option><option>Not classified</option></select></label>
-            <label data-recurring-field-v58930>Estimated hours<input id="clientEstimatedHours" type="number" min="0.25" step="0.25"><small>Use 15-minute increments, for example 1.25, 1.5 or 2 hours.</small></label>
-            <label>Status<select id="clientStatus"><option value="active">Active</option><option value="paused">Paused</option></select><small>New active recurring clients are added to the Schedule basket as NEW R.</small></label>
-            <div class="span-two new-r-help-v6037"><strong>First visit sets the schedule.</strong><span>Save the client first. Then place NEW R from the Schedule Basket onto the correct team and day. That first placement becomes the recurrence start.</span></div>
-            <label id="clientRecurrenceAnchorWrap" class="hidden" aria-hidden="true"><input id="clientRecurrenceAnchor" type="date" tabindex="-1"></label>
+            <label>First billing period<select id="clientFirstBillingRule"><option value="prorate_visits">Prorate by scheduled visits (recommended)</option><option value="full_month">Charge the full monthly amount</option><option value="per_completed_visit">Charge for completed visits only</option><option value="carry_next_month">Carry the partial period into next month</option><option value="custom_amount">Use a custom first invoice amount</option></select></label>
+            <label id="clientFirstInvoiceAmountWrap" class="hidden">Custom first invoice amount (R)<input id="clientFirstInvoiceAmount" type="number" min="0" step="0.01"><small>Used only for the client’s first service month.</small></label>
+            <div class="form-section-title span-two"><span class="eyebrow">Service arrangement</span><h3>Recurring schedule</h3></div><label>Service frequency<select id="clientFrequency"><option>Weekly</option><option>Fortnightly</option><option>Monthly</option><option>Ad hoc</option><option>Seasonal</option><option>Custom</option><option>Not classified</option></select></label>
+            <label id="clientRecurrenceAnchorWrap" data-recurring-field-v58930>Service starting date<input id="clientRecurrenceAnchor" type="date"><small>The earliest date from which this service may be scheduled. It does not lock a weekday.</small></label>
             <label class="hidden" aria-hidden="true"><select id="clientPreferredDay" tabindex="-1"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></label>
             <label class="hidden" aria-hidden="true"><input id="clientFixedDay" type="checkbox" tabindex="-1"></label>
-            <label class="hidden" aria-hidden="true"><select id="clientCluster" tabindex="-1"></select></label>
+            <label data-recurring-field-v58930>Estimated hours<input id="clientEstimatedHours" type="number" min="0.25" step="0.25"><small>Use 15-minute increments, for example 1.25, 1.5 or 2 hours.</small></label>
+            <label data-recurring-field-v58930>Service area override<select id="clientCluster"></select><small>Leave this unchanged to use the service area assigned to the confirmed suburb.</small></label>
             <label class="hidden" aria-hidden="true"><select id="clientPreferredTeam" tabindex="-1"><option value="">No preference</option></select></label>
+            <label>Status<select id="clientStatus"><option value="active">Active</option><option value="paused">Paused</option></select></label>
             <div class="form-section-title span-two"><span class="eyebrow">Site instructions</span><h3>Regular visit tasks and access</h3></div>
             <div class="span-two field-group legacy-work-picker"><span class="field-label">Regular visit tasks</span><div id="clientWorkTypePicker" class="work-type-picker"></div><small>Select the tasks the team must complete at each routine visit. TuinBooks derives the schedule and mobile service indicators from this list.</small></div>
             <label class="span-two">Custom tags<input id="clientCustomTags" placeholder="Key client, dog on property, gate code"><small>Comma-separated. Important tags appear in job detail, not on every schedule card.</small></label>
@@ -1224,7 +1204,6 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
         <a href="#teamCapacitySettings">Teams & capacity</a>
         <a href="#userAccessSettings">Users & access</a>
         <a href="#businessDetailSettings">Business details</a>
-        <a href="#businessWorkbookSettingsV6051">Import / Export</a>
         <a href="#clientCommunicationSettings">Client communications</a>
         <a href="#fieldWorkflowSettingsV59386">Field workflow</a>
         <a href="#invoiceSettingPanel">Invoices & email</a>
@@ -1232,12 +1211,6 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
         <a href="#accountingExportSettingsV59385">Accounting export</a>
       </nav>
       <form id="settingsForm" class="settings-grid">
-        <section class="panel span-two-panel" id="businessWorkbookSettingsV6051">
-          <div class="section-title-row">
-            <div><span class="eyebrow">Business data</span><h2>Import / Export</h2><p>Set up a business in Excel, update existing information, or export a complete workbook for review.</p></div>
-            <div class="dialog-actions"><button type="button" class="button" onclick="window.open('business-workbook.html?v=60.7.5-cumulative-export-schedule-fix','tuinbooksBusinessWorkbook','width=1240,height=860,resizable=yes,scrollbars=yes');return false;">Open Import / Export</button></div>
-          </div>
-        </section>
         <section class="panel span-two-panel service-catalog-panel" id="serviceCatalogSettings">
           <div class="section-title-row"><div><span class="eyebrow">Shared visual language</span><h2>Service catalogue</h2><p>Each service has one symbol, short label and default duration. The same service appears on the scheduler, field phone, Work Records and billing detail.</p></div><div class="dialog-actions"><button type="button" class="button secondary" id="openServiceGuideSettingsBtn">View guide</button><button type="button" class="button" id="addServiceBtnV55">+ Add service</button></div></div>
           <div id="serviceCatalogListV55" class="service-catalog-list-v55"></div>
@@ -1343,11 +1316,11 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
           </div>
           <div class="field-phone-controller">
             <div>
-              <span class="eyebrow">Mobile access</span>
-              <h3>Pair a mobile user</h3>
-              <p>Choose what this phone is allowed to do. Each person can have a different mobile profile.</p>
+              <span class="eyebrow">Field phones</span>
+              <h3>Pair a team phone</h3>
+              <p>The office chooses both the phone name and assigned team. The phone only enters the generated code.</p>
             </div>
-            <button type="button" class="button" id="pairFieldPhoneBtn">Add mobile user</button>
+            <button type="button" class="button" id="pairFieldPhoneBtn">Add field phone</button>
           </div>
           <div class="user-access-explainer">
             <div><strong>Owner / Office administrator</strong><span>Full office workspace, including Billing</span></div>
@@ -1400,18 +1373,13 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
   <dialog id="mobilePairingDialog" class="dialog invite-link-dialog">
     <form id="mobilePairingForm" class="dialog-shell">
       <div class="dialog-heading">
-        <div><span class="eyebrow">Mobile access</span><h2>Pair a mobile user</h2></div>
+        <div><span class="eyebrow">Field phone access</span><h2>Pair a field phone</h2></div>
         <button type="button" class="icon-button" id="closeMobilePairingDialog" aria-label="Close">×</button>
       </div>
-      <p>The office chooses the phone profile. The user enters a four-digit setup PIN once and the phone stays linked until access is changed or revoked.</p>
+      <p>The office sets the phone name and team. The field phone enters a four-digit setup PIN once and then stays linked until the office changes or disables access.</p>
       <div class="form-grid two">
-        <label>Phone / user name<input id="mobilePairingName" autocomplete="off" required><small>For example: Team Green phone, Owner phone or Pieter estimator.</small></label>
-        <label>Mobile profile<select id="mobilePairingProfileV60424" required>
-          <option value="field_worker">Field Worker — assigned team route</option>
-          <option value="owner_mobile">Owner Mobile — all teams + finances</option>
-          <option value="estimator">Estimator — quotes only</option>
-        </select><small id="mobilePairingProfileHelpV60424">Field Worker can complete jobs, add photos and report opportunities.</small></label>
-        <label id="mobilePairingTeamWrapV60424">Assigned team<select id="mobilePairingTeam" required></select><small>Only Field Worker is restricted to this team.</small></label>
+        <label>Phone name<input id="mobilePairingName" autocomplete="off" required><small>For example: Team Green phone or Sipho's phone.</small></label>
+        <label>Assigned team<select id="mobilePairingTeam" required></select><small>The phone cannot change this team.</small></label>
       </div>
       <div id="mobilePairingCodePanel" class="persistent-inline-note hidden">
         <span id="mobilePairingAssignment">Field phone setup PIN</span>
@@ -1770,33 +1738,14 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
   <script src="assets/ocr/tesseract.min.js"></script>
   <script src="vendor/supabase.js"></script>
   <script src="supabase-config.js"></script>
-  <script src="schedule-read-v60522.js?v=60.5.22"></script>
-  <script>window.__TUINBOOKS_INDEX_RELEASE__='60.7.44';window.__TUINBOOKS_SCHEDULE_RELEASE__='60.7.44';</script>
-  <script src="app.js?v=60.7.44-basket-drag-repair"></script>
-  <script src="demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair"></script>
+  <script>window.__TUINBOOKS_CONSOLIDATION_CANARY__={build:"60.0.10-schedule-actions-mobile-note",startedAt:new Date().toISOString()};</script>
+  <script src="app-consolidated-v6007.js?v=60.0.10-schedule-actions-mobile-note"></script>
   <script src="ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
   <script src="ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
   <script src="billing-controls-58954.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
   <script src="fictitious-test-data-58958.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
-  <script src="stability-repair-v59694.js?v=60.3.5-exact-v6011-calendar-production"></script>
-  <script src="management-view-authority-v6034.js?v=60.3.5-exact-v6011-calendar-production"></script>
-  <script src="schedule-exact-canary-v6035.js?v=60.5.9-clean-schedule-drag-scope"></script>
-  <script src="work-consolidated-v6021.js?v=60.3.5-exact-v6011-calendar-production"></script>
-  <script src="billing-completed-work-v6031.js?v=60.3.5-exact-v6011-calendar-production"></script>
-  <script src="release-marker-v6035.js?v=60.3.5-exact-v6011-calendar-production"></script>
-  <script src="ui-client-work-v6038.js?v=60.3.8-client-work-polish"></script>
-  <script src="ui-basket-cleanup-v6039.js?v=60.3.9-basket-cleanup"></script>
-  <script src="ui-client-lifecycle-v6048.js?v=60.4.8-client-lifecycle"></script>
-  <script src="ui-client-list-modal-v6048.js?v=60.4.8-client-lifecycle"></script>
-  <script src="demo-showroom-v60417.js?v=60.4.18-demo-direct-workspace"></script>
-  <script src="demo-live-work-v60422.js?v=60.4.22-demo-live-work-embedded-photos"></script>
-  <script src="onboarding-master-import-v60423.js?v=60.4.24-onboarding-import-self-closing-cell-fix"></script>
-  <script src="business-needs-attention-v6052.js?v=60.5.5-business-needs-attention-import-link"></script>
-  <script src="mobile-profiles-v60430.js?v=60.4.30"></script>
-  <script src="visit-controls-v60521.js?v=60.5.21"></script>
-  <script src="schedule-card-clean-v6060.js?v=60.6.0-schedule-card-clean-late-fix"></script>
-  <script src="schedule-drag-mode-v6061.js?v=60.7.45-drag-toggle-single-owner"></script>
-  <script src="schedule-drag-basket-v6066.js?v=60.7.46-long-sticky-basket"></script>
-  <script src="business-data-export-v6072.js?v=60.7.5-cumulative-export-schedule-fix"></script>
+  <script src="stability-repair-v59694.js?v=60.0.4-schedule-stage-1a-scope-bind"></script>
+  <script src="consolidation-v6004.js?v=60.0.5-schedule-stage-1b-operations"></script>
+  <script src="consolidation-v6010.js?v=60.0.10-schedule-actions-mobile-note"></script>
 </body>
 </html>

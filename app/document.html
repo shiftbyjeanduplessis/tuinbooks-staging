@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>View document</title>
+  <link rel="icon" type="image/png" href="tuinbooks-icon.png">
+  <link rel="stylesheet" href="document.css?v=59.4.0">
+  <meta name="theme-color" content="#1f6f54">
+</head>
+<body>
+  <main class="document-shell">
+    <header><div class="mark">TB</div><div><span>Secure document</span><h1 id="documentTitle">Loading…</h1></div></header>
+    <section id="documentStatus" class="document-status">Preparing the issued PDF…</section>
+    <section id="documentViewer" class="document-viewer hidden">
+      <div class="document-actions"><a id="documentOpen" class="primary" target="_blank" rel="noopener">Open / download PDF</a><span id="documentMeta"></span></div>
+      <iframe id="documentFrame" title="Issued document PDF"></iframe>
+    </section>
+  </main>
+  <script src="vendor/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="document.js?v=59.4.0"></script>
+</body>
+</html>

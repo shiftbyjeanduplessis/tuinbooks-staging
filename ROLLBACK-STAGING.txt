@@ -1,0 +1,7 @@
+ROLLBACK STAGING
+================
+1. Find the newest .tb-staging-backup-YYYYMMDD-HHMMSS folder created by APPLY-STAGING.py.
+2. Copy its index.html back to app/index.html.
+3. The added v60.8.3 files may remain physically present; without the index tags they do not load.
+4. Redeploy staging and hard-refresh.
+5. Do not use this rollback instruction as a substitute for the separate production rollback baseline.

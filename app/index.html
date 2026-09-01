@@ -324,8 +324,16 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
     visibility:visible!important;
     opacity:1!important;
     pointer-events:auto!important;
-    position:relative!important;
-    z-index:3!important;
+    position:sticky!important;
+    bottom:0!important;
+    z-index:30!important;
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+    flex-wrap:wrap!important;
+    padding:12px 0 4px!important;
+    border-top:1px solid rgba(28,83,61,.12)!important;
+    background:#fff!important;
   }
   #view-clients #clientForm .form-actions button[type="submit"],
   body.client-record-modal-open-v6042 #clientForm .form-actions button[type="submit"]{
@@ -333,6 +341,15 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
     visibility:visible!important;
     opacity:1!important;
     pointer-events:auto!important;
+  }
+  @media(max-width:720px){
+    #view-clients .clients-layout,
+    #view-clients #clientForm,
+    #view-clients #clientForm .form-actions{
+      min-width:0!important;
+      max-width:100%!important;
+      box-sizing:border-box!important;
+    }
   }
 </style>
 </head>
@@ -1790,8 +1807,8 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
   <script src="vendor/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="schedule-read-v60522.js?v=60.5.22"></script>
-  <script>window.__TUINBOOKS_INDEX_RELEASE__='60.8.6-stage2-direct-source';window.__TUINBOOKS_SCHEDULE_RELEASE__='60.7.44';</script>
-  <script src="app.js?v=60.8.6-stage2-direct-source"></script>
+  <script>window.__TUINBOOKS_INDEX_RELEASE__='60.8.7-stage2-correction2';window.__TUINBOOKS_SCHEDULE_RELEASE__='60.7.44';</script>
+  <script src="app.js?v=60.8.7-stage2-correction2"></script>
   <script src="demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair"></script>
   <script src="ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
   <script src="ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup"></script>

@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.6-stage2-direct-source';
+window.__TUINBOOKS_RELEASE__='60.8.7-stage2-correction2';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -5405,6 +5405,7 @@ async function runScheduleMutationV6084(label,mutator,{needsCore=false}={}){
     scheduleMutationBusyV6084=false;
   }
 }
+window.runScheduleMutationV6084=runScheduleMutationV6084;
 function cleanPayloadPhotosV41(item){const copy={...item};delete copy.photos;if(Array.isArray(copy.visitPhotoItems))copy.visitPhotoItems=copy.visitPhotoItems.map(photo=>{const clean={...photo};delete clean.preview;if(String(clean.url||'').startsWith('data:'))delete clean.url;return clean;});return stripCloudTransientV6084(copy);}
 function operationalRuntimeV41(){return {closures:state.closures||{},catchUps:state.catchUps||[],visitActions:state.visitActions||[],clientReportStatus:state.clientReportStatus||{},clientReports:state.clientReports||[],teamDayPlans:state.teamDayPlans||{},scheduleVersions:state.scheduleVersions||[]};}
 function makeOperationalSnapshotV41(){return {
@@ -28262,7 +28263,35 @@ function renderWorkTeamProgressV6086(){
     console.warn('[TuinBooks Stage 2] Work team progress could not render:',error);
   }
 }
+
 window.renderWorkTeamProgressV6086=renderWorkTeamProgressV6086;
+const TUINBOOKS_STAGE2_WORK_OBSERVER_V6087='60.8.7-stage2-work-observer';
+function installWorkTeamProgressObserverV6087(){
+  try{
+    const host=document.getElementById('workRecordCards');
+    if(!host||host.__tuinbooksWorkProgressObserverV6087)return;
+    let queued=false;
+    const refresh=()=>{
+      if(queued)return;
+      queued=true;
+      queueMicrotask(()=>{
+        queued=false;
+        try{
+          const view=document.getElementById('view-records');
+          if(view?.classList.contains('active'))renderWorkTeamProgressV6086();
+        }catch(error){console.warn('[TuinBooks Stage 2] Work progress observer refresh failed:',error);}
+      });
+    };
+    const observer=new MutationObserver(refresh);
+    observer.observe(host,{childList:true,subtree:false});
+    host.__tuinbooksWorkProgressObserverV6087=observer;
+    refresh();
+  }catch(error){console.warn('[TuinBooks Stage 2] Work progress observer could not install:',error);}
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(installWorkTeamProgressObserverV6087,0),{once:true});
+}else setTimeout(installWorkTeamProgressObserverV6087,0);
+
 
 function scheduleCancellationRefreshBillingV6052(job){
   const client=clientById(job?.clientId),month=String(job?.date||'').slice(0,7);
@@ -28287,7 +28316,8 @@ window.applyScheduleCancellationV6052=async function(jobId,mode,reason=''){
 
   const label=mode==='charge'?'Cancel visit â€” charge':'Cancel visit â€” no charge';
   try{window.closeScheduleTransientUiV6085?.();}catch(_){}
-  const saved=await runScheduleMutationV6084(label,()=>{
+  if(typeof window.runScheduleMutationV6084!=='function')throw new Error('Schedule save authority is unavailable.');
+  const saved=await window.runScheduleMutationV6084(label,()=>{
     const now=new Date().toISOString(),actor=scheduleCancellationActorV6052();
     if(!scheduleCancellationIsOursV6052(job)){
       job.cancellationPreviousStatusV6052=job.status||'scheduled';

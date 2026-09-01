@@ -3271,12 +3271,20 @@ window.updateRouteMovePreviewV23=function(sourceTeamId,sourceDate){
   const result=routeMoveProjectionV23(sourceTeamId,sourceDate,teamId,date);note.className=`persistent-inline-note ${result.over?'danger':'good'}`;
   note.textContent=result.same?'Choose a different team or day.':result.over?`Cannot move route here: ${result.used.toFixed(1)}h would exceed ${result.safe.toFixed(1)} safe hours.`:`After move: ${result.used.toFixed(1)} / ${result.safe.toFixed(1)} safe hours.`;
 };
-window.saveRouteMoveV23=function(event,sourceTeamId,sourceDate){
-  event.preventDefault();const teamId=$('routeMoveTeamV23')?.value,date=$('routeMoveDateV23')?.value;if(!teamId||!date||isPastScheduleDateV23(date))return;
-  const result=routeMoveProjectionV23(sourceTeamId,sourceDate,teamId,date);if(result.same){toast('Choose a different team or day.','error');return;}if(!result.moving.length){toast('There are no unfinished jobs to move.','error');return;}if(result.over){updateRouteMovePreviewV23(sourceTeamId,sourceDate);toast('That destination cannot safely take the route.','error');return;}
-  const startSort=Math.max(0,...result.targetRows.map(job=>routeOrderV14(job)));result.moving.sort((a,b)=>routeOrderV14(a)-routeOrderV14(b)).forEach((job,index)=>{job.teamId=teamId;job.date=date;job.sort=startSort+index+1;job.manualOverride=true;job.autoAssigned=false;addJobAuditV14(job,'Route reassigned manually',`${teamById(teamId)?.name||'Team'} · ${date}`);});
-  selectedScheduleDetailV23={mode:'day',teamId,date};save();renderSchedule();toast(`${result.moving.length} route job${result.moving.length===1?'':'s'} reassigned.`);
+window.saveRouteMoveV23=async function(event,sourceTeamId,sourceDate){
+  event.preventDefault();const teamId=$('routeMoveTeamV23')?.value,date=$('routeMoveDateV23')?.value;if(!teamId||!date||isPastScheduleDateV23(date))return false;
+  const result=routeMoveProjectionV23(sourceTeamId,sourceDate,teamId,date);if(result.same){toast('Choose a different team or day.','error');return false;}if(!result.moving.length){toast('There are no unfinished jobs to move.','error');return false;}if(result.over){updateRouteMovePreviewV23(sourceTeamId,sourceDate);toast('That destination cannot safely take the route.','error');return false;}
+  const movedIds=result.moving.map(job=>job.id);
+  const saved=await runScheduleMutationV6084('Route reassignment',()=>{
+    const startSort=Math.max(0,...result.targetRows.map(job=>routeOrderV14(job)));
+    result.moving.sort((a,b)=>routeOrderV14(a)-routeOrderV14(b)).forEach((job,index)=>{job.teamId=teamId;job.date=date;job.sort=startSort+index+1;job.manualOverride=true;job.autoAssigned=false;addJobAuditV14(job,'Route reassigned manually',`${teamById(teamId)?.name||'Team'} Â· ${date}`);});
+    selectedScheduleDetailV23={mode:'day',teamId,date};
+    return {verifySchedule:{rows:movedIds.map(id=>({id,date,teamId}))}};
+  });
+  if(!saved.ok)return false;
+  renderSchedule();toast(`${result.moving.length} route job${result.moving.length===1?'':'s'} reassigned.`);return true;
 };
+
 
 window.openMoveJobV20=function(jobId){
   const job=state.schedules.find(item=>item.id===jobId),client=clientById(job?.clientId);if(!job||!client||job.status==='completed'||isPastScheduleDateV23(job.date)){toast('Past and completed work is frozen.','error');return;}
@@ -3284,30 +3292,42 @@ window.openMoveJobV20=function(jobId){
   $('moveScheduleJobId').value=job.id;$('moveScheduleJobSummary').textContent=`${client.name} — ${client.address||client.suburb||''}`;$('moveScheduleJobDate').innerHTML=dates.map((date,index)=>`<option value="${date}" ${date===job.date?'selected':''}>${dayName(date)} · ${fmtDate(date)}</option>`).join('');$('moveScheduleJobTeam').innerHTML=state.teams.map(team=>`<option value="${team.id}" ${team.id===job.teamId?'selected':''}>${esc(team.name)}</option>`).join('');updateMoveCapacityV20();$('moveScheduleJobDialog').showModal();
 };
 
-saveMoveJobV20=function(event){
-  event.preventDefault();const job=state.schedules.find(item=>item.id===$('moveScheduleJobId').value),team=teamById($('moveScheduleJobTeam').value),date=$('moveScheduleJobDate').value;if(!job||!team||!date)return;
-  if(isPastScheduleDateV23(date)||isPastScheduleDateV23(job.date)){toast('Past days are frozen.','error');return;}
+saveMoveJobV20=async function(event){
+  event.preventDefault();const job=state.schedules.find(item=>item.id===$('moveScheduleJobId').value),team=teamById($('moveScheduleJobTeam').value),date=$('moveScheduleJobDate').value;if(!job||!team||!date)return false;
+  if(isPastScheduleDateV23(date)||isPastScheduleDateV23(job.date)){toast('Past days are frozen.','error');return false;}
   const dates=weekDates($('scheduleWeekPicker').value||startOfWeek(localDateISO())),weekJobs=state.schedules.filter(item=>dates.includes(item.date)),cell=scheduleCellStateV20(team,date,weekJobs,job,job.id);
-  if(cell.over){updateMoveCapacityV20();toast('That team-day is full. Move work out before adding another job.','error');return;}
-  job.date=date;job.teamId=team.id;job.manualOverride=true;job.autoAssigned=false;addJobAuditV14(job,'Schedule moved manually',`${team.name} · ${date}`);save();$('moveScheduleJobDialog').close();selectedScheduleDetailV23={mode:'day',teamId:team.id,date};renderSchedule();toast('Job reassigned.');
+  if(cell.over){updateMoveCapacityV20();toast('That team-day is full. Move work out before adding another job.','error');return false;}
+  const saved=await runScheduleMutationV6084('Job reassignment',()=>{
+    job.date=date;job.teamId=team.id;job.manualOverride=true;job.autoAssigned=false;addJobAuditV14(job,'Schedule moved manually',`${team.name} Â· ${date}`);
+    return {verifySchedule:{rows:[{id:job.id,date,teamId:team.id}]}};
+  });
+  if(!saved.ok)return false;
+  $('moveScheduleJobDialog').close();selectedScheduleDetailV23={mode:'day',teamId:team.id,date};renderSchedule();toast('Job reassigned.');return true;
+
+
 };
 window.saveMoveJobV20=saveMoveJobV20; // v60.4.14 startup bridge: export the scoped move handler for later schedule patches
 
-window.dropSchedule=function(event,date,teamId=''){
-  event.preventDefault();if(isPastScheduleDateV23(date)){toast('Past days are frozen.','error');return;}let data;try{data=JSON.parse(event.dataTransfer.getData('application/json'));}catch{return;}
-  const team=teamById(teamId);if(!team)return;
+window.dropSchedule=async function(event,date,teamId=''){
+  event.preventDefault();if(isPastScheduleDateV23(date)){toast('Past days are frozen.','error');return false;}let data;try{data=JSON.parse(event.dataTransfer.getData('application/json'));}catch{return false;}
+  const team=teamById(teamId);if(!team)return false;
   const dates=weekDates($('scheduleWeekPicker').value||startOfWeek(localDateISO())),weekJobs=state.schedules.filter(job=>dates.includes(job.date));
-  if(data.type==='job'){
-    const job=state.schedules.find(row=>row.id===data.id);if(!job||job.status==='completed'||isPastScheduleDateV23(job.date))return;if(job.teamId===teamId&&job.date===date)return;
-    const cell=scheduleCellStateV20(team,date,weekJobs,job,job.id);if(cell.over){toast(`${team.name} is full on ${dayName(date)}.`,'error');return;}
-    job.date=date;job.teamId=teamId;job.sort=99;job.manualOverride=true;job.autoAssigned=false;addJobAuditV14(job,'Schedule moved manually',`${team.name} · ${date}`);
-  }else if(data.type==='client'){
-    const client=clientById(data.id);if(!client)return;if(state.schedules.some(job=>job.clientId===client.id&&job.date===date)){toast('That site is already scheduled on this day.','error');return;}
-    const incoming={clientId:client.id,clusterId:client.clusterId,estimatedHours:client.estimatedHours||1};const cell=scheduleCellStateV20(team,date,weekJobs,incoming,'');if(cell.over){toast(`${team.name} is full on ${dayName(date)}.`,'error');return;}
-    state.schedules.push({id:uid('sch'),date,clientId:client.id,teamId,status:'scheduled',estimatedHours:client.estimatedHours||1,sort:99,clusterId:client.clusterId,revenueType:'Recurring contract',workTypeIds:[...(client.workTypeIds||[])],manualOverride:true,autoAssigned:false});
-  }else return;
-  save();selectedScheduleDetailV23={mode:'day',teamId,date};renderSchedule();toast('Schedule updated.');
+  let verifyRows=[];
+  const saved=await runScheduleMutationV6084('Schedule change',()=>{
+    if(data.type==='job'){
+      const job=state.schedules.find(row=>row.id===data.id);if(!job||job.status==='completed'||isPastScheduleDateV23(job.date))throw new Error('This appointment cannot be moved.');if(job.teamId===teamId&&job.date===date)return {verifySchedule:null};
+      const cell=scheduleCellStateV20(team,date,weekJobs,job,job.id);if(cell.over)throw new Error(`${team.name} is full on ${dayName(date)}.`);
+      job.date=date;job.teamId=teamId;job.sort=99;job.manualOverride=true;job.autoAssigned=false;addJobAuditV14(job,'Schedule moved manually',`${team.name} Â· ${date}`);verifyRows=[{id:job.id,date,teamId}];
+    }else if(data.type==='client'){
+      const client=clientById(data.id);if(!client)throw new Error('Client not found.');if(state.schedules.some(job=>job.clientId===client.id&&job.date===date))throw new Error('That site is already scheduled on this day.');
+      const incoming={clientId:client.id,clusterId:client.clusterId,estimatedHours:client.estimatedHours||1},cell=scheduleCellStateV20(team,date,weekJobs,incoming,'');if(cell.over)throw new Error(`${team.name} is full on ${dayName(date)}.`);
+      const job={id:uid('sch'),date,clientId:client.id,teamId,status:'scheduled',estimatedHours:client.estimatedHours||1,sort:99,clusterId:client.clusterId,revenueType:'Recurring contract',workTypeIds:[...(client.workTypeIds||[])],manualOverride:true,autoAssigned:false};state.schedules.push(job);verifyRows=[{id:job.id,date,teamId}];
+    }else throw new Error('The dragged item could not be read.');
+    return {verifySchedule:{rows:verifyRows}};
+  });
+  if(!saved.ok)return false;selectedScheduleDetailV23={mode:'day',teamId,date};renderSchedule();toast('Schedule updated.');return true;
 };
+
 
 function renderScheduleExceptionBannerV23(){
   const panel=$('unresolvedPastPanel'),count=$('unresolvedPastCount'),tray=$('unresolvedPastTray');if(!panel||!count||!tray)return;
@@ -5234,7 +5254,157 @@ saveClientForm=function(event){
   if(saved){saved.clusterId=explicit;saved.incomplete=clientCompletionIssues({...saved,incomplete:false}).length>0;save();renderClients();}
 };
 
-function cleanPayloadPhotosV41(item){const copy={...item};delete copy.photos;if(Array.isArray(copy.visitPhotoItems))copy.visitPhotoItems=copy.visitPhotoItems.map(photo=>{const clean={...photo};delete clean.preview;if(String(clean.url||'').startsWith('data:'))delete clean.url;return clean;});return copy;}
+/* ========================================================================== 
+   TuinBooks v60.8.4 â€” Batch 1 direct-source data integrity
+   - cloud payloads never persist serviceSitesV56
+   - critical Schedule mutations are transactional from the user's perspective
+   - success is shown only after Supabase confirms and read-back verifies the move
+   ========================================================================== */
+const TUINBOOKS_BATCH1_DIRECT_SOURCE_V6084='60.8.4-batch1-data-integrity';
+
+function stripCloudTransientV6084(value){
+  if(value===null||value===undefined||typeof value!=='object')return value;
+  if(value instanceof Date)return value.toISOString();
+  if(Array.isArray(value))return value.map(stripCloudTransientV6084);
+  const out={};
+  Object.entries(value).forEach(([key,item])=>{
+    if(key==='serviceSitesV56')return;
+    out[key]=stripCloudTransientV6084(item);
+  });
+  return out;
+}
+function assertNoServiceSitesPayloadV6084(payload,label='cloud payload'){
+  const json=JSON.stringify(payload||{});
+  if(json.includes('"serviceSitesV56"')){
+    const error=new Error('TuinBooks blocked '+label+': serviceSitesV56 reached a persistence boundary.');
+    error.code='SERVICE_SITES_V56_PERSISTENCE_BLOCKED';
+    throw error;
+  }
+  return payload;
+}
+function saveLocalOnlyV6084(){
+  try{
+    if(typeof saveLocalBaseV28==='function'){saveLocalBaseV28();return true;}
+    const payload=JSON.stringify(state);
+    try{localStorage.setItem(STORE_KEY,payload);}catch(error){window.__tuinBooksMemoryStore=payload;}
+    return true;
+  }catch(error){console.error('TuinBooks local save failed',error);return false;}
+}
+function captureScheduleMutationV6084(){
+  return JSON.stringify({
+    schedules:state.schedules||[],
+    commitments:state.serviceCommitments||[],
+    catchUps:state.catchUps||[],
+    scheduleOverflowQueue:state.scheduleOverflowQueue||[],
+    quotes:state.quotes||[],
+    scheduleBasket:state.scheduleBasket||[],
+    visits:state.visits||[],
+    clients:state.clients||[],
+    serviceAgreements:state.serviceAgreements||[]
+  });
+}
+function restoreScheduleMutationLocalV6084(snapshot){
+  const parsed=typeof snapshot==='string'?JSON.parse(snapshot):snapshot||{};
+  if(Object.prototype.hasOwnProperty.call(parsed,'schedules'))state.schedules=parsed.schedules||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'commitments'))state.serviceCommitments=parsed.commitments||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'catchUps'))state.catchUps=parsed.catchUps||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'scheduleOverflowQueue'))state.scheduleOverflowQueue=parsed.scheduleOverflowQueue||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'quotes'))state.quotes=parsed.quotes||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'scheduleBasket'))state.scheduleBasket=parsed.scheduleBasket||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'visits'))state.visits=parsed.visits||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'clients'))state.clients=parsed.clients||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'serviceAgreements'))state.serviceAgreements=parsed.serviceAgreements||[];
+  saveLocalOnlyV6084();
+}
+function applyLegacyScheduleSnapshotV6084(snapshot){
+  const parsed=typeof snapshot==='string'?JSON.parse(snapshot):snapshot||{};
+  if(Object.prototype.hasOwnProperty.call(parsed,'schedules'))state.schedules=parsed.schedules||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'commitments'))state.serviceCommitments=parsed.commitments||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'catchUps'))state.catchUps=parsed.catchUps||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'scheduleOverflowQueue'))state.scheduleOverflowQueue=parsed.scheduleOverflowQueue||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'quotes'))state.quotes=parsed.quotes||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'scheduleBasket'))state.scheduleBasket=parsed.scheduleBasket||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'visits'))state.visits=parsed.visits||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'clients'))state.clients=parsed.clients||[];
+  if(Object.prototype.hasOwnProperty.call(parsed,'serviceAgreements'))state.serviceAgreements=parsed.serviceAgreements||[];
+}
+async function verifyScheduleCloudV6084(spec){
+  if(!spec||backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId)return true;
+  const expected=Array.isArray(spec.rows)?spec.rows.filter(row=>row?.id):[];
+  const deleted=Array.isArray(spec.deletedIds)?spec.deletedIds.filter(Boolean):[];
+  const ids=[...new Set([...expected.map(row=>String(row.id)),...deleted.map(String)])];
+  if(!ids.length)return true;
+  const {data,error}=await backendV28.client.from('schedule_jobs')
+    .select('id,visit_date,team_id,status')
+    .eq('business_id',backendV28.businessId)
+    .in('id',ids);
+  if(error)throw error;
+  const map=new Map((data||[]).map(row=>[String(row.id),row]));
+  for(const row of expected){
+    const live=map.get(String(row.id));
+    if(!live)throw new Error('Cloud verification could not find schedule job '+row.id+'.');
+    if(row.date!==undefined&&String(live.visit_date||'')!==String(row.date||''))throw new Error('Cloud verification found the old visit date for '+row.id+'.');
+    if(row.teamId!==undefined&&String(live.team_id||'')!==String(row.teamId||''))throw new Error('Cloud verification found the old team for '+row.id+'.');
+    if(row.status!==undefined&&String(live.status||'').toLowerCase()!==String(row.status||'').toLowerCase())throw new Error('Cloud verification found the wrong status for '+row.id+'.');
+  }
+  for(const id of deleted){if(map.has(String(id)))throw new Error('Cloud verification found schedule job '+id+' after it should have been removed.');}
+  return true;
+}
+async function verifyCoreClientCloudV6084(spec){
+  if(!spec||backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||!spec.id)return true;
+  const {data,error}=await backendV28.client.from('customers').select('id,payload').eq('business_id',backendV28.businessId).eq('id',spec.id).maybeSingle();
+  if(error)throw error;
+  if(!data?.id)throw new Error('Cloud verification could not find client '+spec.id+'.');
+  const payload=data.payload||{};
+  if(spec.preferredDay!==undefined&&String(payload.preferredDay||'')!==String(spec.preferredDay||''))throw new Error('Cloud verification found the old recurring day for '+spec.id+'.');
+  if(spec.preferredTeamId!==undefined&&String(payload.preferredTeamId||payload.teamId||'')!==String(spec.preferredTeamId||''))throw new Error('Cloud verification found the old recurring team for '+spec.id+'.');
+  if(JSON.stringify(payload).includes('"serviceSitesV56"'))throw new Error('Cloud verification found serviceSitesV56 in the saved client payload.');
+  return true;
+}
+let scheduleMutationBusyV6084=false;
+async function runScheduleMutationV6084(label,mutator,{needsCore=false}={}){
+  if(scheduleMutationBusyV6084){toast('Another schedule change is still saving. Please wait a moment.','error');return {ok:false,busy:true};}
+  const before=captureScheduleMutationV6084();
+  let operationalSaved=false,coreSaved=false,value=null,coreRequired=false;
+  scheduleMutationBusyV6084=true;
+  try{
+    value=await mutator();
+    coreRequired=typeof needsCore==='function'?!!needsCore(value):!!needsCore;
+    if(!saveLocalOnlyV6084())throw new Error('The local schedule could not be saved.');
+    if(backendV28.mode==='supabase'){
+      const opSaver=typeof persistOperationalDocumentV59389==='function'?persistOperationalDocumentV59389:(typeof syncOperationalDeltaV59394==='function'?()=>syncOperationalDeltaV59394(true):null);
+      if(!opSaver)throw new Error('The operational cloud-save authority is unavailable.');
+      operationalSaved=await opSaver();
+      if(!operationalSaved)throw new Error(backendV28.lastOperationalErrorV5604?.message||'The schedule was not accepted by the cloud.');
+      await verifyScheduleCloudV6084(value?.verifySchedule);
+      if(coreRequired){
+        if(typeof syncCoreDeltaV59395!=='function')throw new Error('The client cloud-save authority is unavailable.');
+        coreSaved=await syncCoreDeltaV59395(true);
+        if(!coreSaved)throw new Error(backendV28.lastCoreErrorV59395?.message||'The recurring client settings were not accepted by the cloud.');
+        await verifyCoreClientCloudV6084(value?.verifyClient);
+      }
+    }
+    return {ok:true,value};
+  }catch(error){
+    console.error('[TuinBooks Batch 1] '+label+' failed',error);
+    restoreScheduleMutationLocalV6084(before);
+    if(backendV28.mode==='supabase'){
+      try{
+        if(operationalSaved&&!(typeof operationalConflictFrozenV59682==='function'&&operationalConflictFrozenV59682())){
+          const saver=typeof persistOperationalDocumentV59389==='function'?persistOperationalDocumentV59389:(typeof syncOperationalDeltaV59394==='function'?()=>syncOperationalDeltaV59394(true):null);
+          if(saver)await saver();
+        }
+        if(coreSaved&&!backendV28.coreConflict&&typeof syncCoreDeltaV59395==='function')await syncCoreDeltaV59395(true);
+      }catch(compensationError){console.error('[TuinBooks Batch 1] rollback cloud compensation failed',compensationError);}
+    }
+    try{renderSchedule();}catch(_){}
+    toast(label+' was not saved online. The previous schedule has been restored.','error');
+    return {ok:false,error};
+  }finally{
+    scheduleMutationBusyV6084=false;
+  }
+}
+function cleanPayloadPhotosV41(item){const copy={...item};delete copy.photos;if(Array.isArray(copy.visitPhotoItems))copy.visitPhotoItems=copy.visitPhotoItems.map(photo=>{const clean={...photo};delete clean.preview;if(String(clean.url||'').startsWith('data:'))delete clean.url;return clean;});return stripCloudTransientV6084(copy);}
 function operationalRuntimeV41(){return {closures:state.closures||{},catchUps:state.catchUps||[],visitActions:state.visitActions||[],clientReportStatus:state.clientReportStatus||{},clientReports:state.clientReports||[],teamDayPlans:state.teamDayPlans||{},scheduleVersions:state.scheduleVersions||[]};}
 function makeOperationalSnapshotV41(){return {
   p_business_id:backendV28.businessId,
@@ -8059,7 +8229,13 @@ window.scheduleDrop=function(event,teamId,date){
 function showScheduleUndo(message,snapshot){
   scheduleUndoSnapshot=snapshot;const host=$('scheduleActionAlerts');if(!host)return;host.className='schedule-soft-warning';host.innerHTML=`<span>${esc(message)}</span><div><button type="button" class="button secondary compact" onclick="undoScheduleChange()">Undo</button><button type="button" class="button compact" onclick="keepScheduleChange()">Keep</button></div>`;setTimeout(()=>{if(scheduleUndoSnapshot===snapshot)keepScheduleChange();},12000);
 }
-window.undoScheduleChange=function(){if(scheduleUndoSnapshot)restoreScheduleSnapshot(scheduleUndoSnapshot);scheduleUndoSnapshot=null;const host=$('scheduleActionAlerts');if(host){host.className='schedule-action-alerts hidden';host.innerHTML='';}};
+window.undoScheduleChange=async function(){
+  const snapshot=scheduleUndoSnapshot;if(!snapshot)return;
+  const saved=await runScheduleMutationV6084('Schedule undo',()=>{applyLegacyScheduleSnapshotV6084(snapshot);return {verifySchedule:null};},{needsCore:true});
+  if(saved.ok){scheduleUndoSnapshot=null;renderSchedule();toast('Schedule change undone.');}
+  const host=$('scheduleActionAlerts');if(host){host.className='schedule-action-alerts hidden';host.innerHTML='';}
+};
+
 window.keepScheduleChange=function(){scheduleUndoSnapshot=null;const host=$('scheduleActionAlerts');if(host){host.className='schedule-action-alerts hidden';host.innerHTML='';}};
 
 window.adjustScheduleDayCapacity=function(teamId,date){
@@ -9426,7 +9602,7 @@ const makeCoreSnapshotBaseV5601=makeCoreSnapshotV28;
 makeCoreSnapshotV28=function(){
   const snapshot=makeCoreSnapshotBaseV5601(),validClusters=new Set((state.clusters||[]).map(row=>row.id)),siteIds=new Set(),sites=[];
   (state.clients||[]).forEach(client=>{
-    const rows=(client.serviceSitesV56||[]).length?client.serviceSitesV56:[{id:client.siteId||`site-${client.id}`,name:client.siteName||client.name,address:client.address||'',suburb:client.suburb||'',clusterId:client.clusterId||'',accessNotes:client.accessNotes||'',petNotes:client.petNotes||'',instructions:client.serviceDescription||'',primary:true,active:client.status!=='archived'}];
+    const rows=(client.serviceSitesV56||[]).length?client.serviceSitesV56:[{id:client.siteId||`site-${client.id}`,name:client.siteName||client.name,address:client.address||'',suburb:client.suburb||'',clusterId:client.clusterId||'',accessNotes:client.accessNotes||'',petNotes:client.petNotes||client.gardenNotes||'',instructions:client.serviceDescription||'',primary:true,active:client.status!=='archived'}];
     rows.forEach((site,index)=>{
       const id=site.id||uid('site'),primary=site.primary===true||(!rows.some(item=>item.primary)&&index===0);siteIds.add(id);
       const address=primary&&client.address!==undefined?String(client.address||''):String(site.address||'');
@@ -9435,13 +9611,15 @@ makeCoreSnapshotV28=function(){
       const gardenNotes=primary&&client.gardenNotes!==undefined?String(client.gardenNotes||''):String(site.petNotes||site.gardenNotes||'');
       const instructions=primary&&client.serviceDescription!==undefined?String(client.serviceDescription||''):String(site.instructions||site.serviceDescription||'');
       const payload=primary
-        ?{...site,...client,siteId:id,primary:true,serviceSitesV56:rows,address,suburb,accessNotes,petNotes:gardenNotes,gardenNotes,serviceDescription:instructions,instructions}
-        :{...site,customerId:client.id,primary:false,serviceSiteV56:true};
+        ?stripCloudTransientV6084({...site,...client,siteId:id,primary:true,address,suburb,accessNotes,petNotes:gardenNotes,gardenNotes,serviceDescription:instructions,instructions})
+        :stripCloudTransientV6084({...site,customerId:client.id,primary:false,serviceSiteV56:true});
       sites.push({id,customer_id:client.id,site_name:primary?(client.siteName||client.name||site.name||'Service site'):(site.name||client.name||'Service site'),address,suburb,cluster_id:validClusters.has(primary?client.clusterId:site.clusterId||client.clusterId)?(primary?client.clusterId:site.clusterId||client.clusterId):null,access_notes:accessNotes,pet_notes:gardenNotes,instructions,active:site.active!==false&&client.status!=='archived',payload});
     });
   });
-  (snapshot.p_sites||[]).filter(row=>!siteIds.has(row.id)&&!(state.clients||[]).some(client=>client.id===row.customer_id)).forEach(row=>sites.push(row));
-  snapshot.p_sites=sites;return snapshot;
+  (snapshot.p_sites||[]).filter(row=>!siteIds.has(row.id)&&!(state.clients||[]).some(client=>client.id===row.customer_id)).forEach(row=>sites.push(stripCloudTransientV6084(row)));
+  snapshot.p_sites=sites;
+  const clean=stripCloudTransientV6084(snapshot);
+  return assertNoServiceSitesPayloadV6084(clean,'core snapshot');
 };
 const hydrateWorkspaceStateBaseV5601=hydrateWorkspaceStateV28;
 hydrateWorkspaceStateV28=function(business,teams,clusters,customers,sites){
@@ -11412,23 +11590,25 @@ function missedJobBasketCloneV58931(job){
   const clone=JSON.parse(JSON.stringify(job)),newId=uid('sch');clone.id=newId;clone.status='unscheduled';clone.date=job.date||'';clone.teamId=job.teamId||'';clone.manualOverride=true;clone.autoGenerated=false;clone.autoAssigned=false;clone.sourceMissedJobIdV58931=job.id;clone.originalMissedDateV58931=job.date;clone.commitmentIds=[...(job.commitmentIds||[])];
   clone.audit=[...(clone.audit||[]),{at:new Date().toISOString(),actor:'Office',action:'Created reschedule item from missed visit',note:job.date||''}];return clone;
 }
-function moveScheduleJobToBasketV58931(jobId){
+async function moveScheduleJobToBasketV58931(jobId){
   const job=(state.schedules||[]).find(row=>row.id===jobId);if(!job){toast('That appointment could not be found. Refresh and try again.','error');return false;}
   const missed=scheduleJobNeedsOfficeActionV58928(job);if(scheduleJobIsResolvedV58930(job)&&!missed){toast('Completed or resolved appointments remain in history and cannot be moved.','error');return false;}
-  const before=snapshotSchedule(),client=clientById(job.clientId)||{};
-  try{
+  const client=clientById(job.clientId)||{},originalId=job.id;
+  const saved=await runScheduleMutationV6084('Move to Schedule basket',()=>{
     if(missed){
       const clone=missedJobBasketCloneV58931(job);jobToBasketItemV58930(clone,'Missed visit waiting to be rescheduled');markOriginalMissedAsRescheduledV58931(job,'','Moved to Schedule basket');
       (state.serviceCommitments||[]).filter(row=>row.scheduleJobId===job.id).forEach(row=>{row.scheduleJobId='';row.status='Unscheduled';row.updatedAt=new Date().toISOString();});
-    }else{
-      jobToBasketItemV58930(job,'Removed from the calendar by the office');
-      (state.serviceCommitments||[]).filter(row=>row.scheduleJobId===job.id).forEach(row=>{row.scheduleJobId='';row.status='Unscheduled';row.updatedAt=new Date().toISOString();});
-      state.schedules=state.schedules.filter(row=>row.id!==job.id);
-      if(job.quoteId){const quote=quoteById(job.quoteId);if(quote){quote.scheduled=false;delete quote.scheduledDate;delete quote.scheduledTeamId;delete quote.scheduledJobId;}}
+      return {verifySchedule:{rows:[{id:originalId,status:'rescheduled'}]}};
     }
-    if(!safeSaveV58930())throw new Error('save failed');renderSchedule();endScheduleDrag();toast(`${scheduleClientName(client)} moved to the Schedule basket.`);return true;
-  }catch(error){console.error(error);restoreScheduleSnapshot(before);toast('The appointment could not be moved. The previous schedule has been restored.','error');return false;}
+    jobToBasketItemV58930(job,'Removed from the calendar by the office');
+    (state.serviceCommitments||[]).filter(row=>row.scheduleJobId===job.id).forEach(row=>{row.scheduleJobId='';row.status='Unscheduled';row.updatedAt=new Date().toISOString();});
+    state.schedules=state.schedules.filter(row=>row.id!==job.id);
+    if(job.quoteId){const quote=quoteById(job.quoteId);if(quote){quote.scheduled=false;delete quote.scheduledDate;delete quote.scheduledTeamId;delete quote.scheduledJobId;}}
+    return {verifySchedule:{deletedIds:[originalId]}};
+  });
+  if(!saved.ok)return false;renderSchedule();endScheduleDrag();toast(`${scheduleClientName(client)} moved to the Schedule basket.`);return true;
 }
+
 window.moveScheduleJobToBasketV58931=moveScheduleJobToBasketV58931;
 window.moveMissedJobToBasketV58931=moveScheduleJobToBasketV58931;
 window.scheduleBasketDropV58930=function(event){
@@ -11494,31 +11674,40 @@ function recurringPlacementDialogV58930(job,previousDate){
 }
 window.scheduleInsertDragOverV58930=function(event){event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';event.currentTarget.classList.add('active');};
 window.scheduleInsertDragLeaveV58930=function(event){if(!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('active');};
-window.scheduleDropAtPositionV58930=function(event,teamId,date,index){
+window.scheduleDropAtPositionV58930=async function(event,teamId,date,index){
   event.preventDefault();event.stopPropagation();event.currentTarget?.classList?.remove('active');
-  const data=scheduleDragData(event),team=teamById(teamId);if(!data||!team)return toast('The dragged work item could not be read.','error');if(scheduleIsPast(date))return toast('Past dates are locked. Choose today or a future date.','error');
-  const missing=typeof teamCanServiceV552==='function'?schedulePayloadServiceIds(data).filter(id=>!teamCanServiceV552(teamId,id)):[];if(missing.length)return toast('This team is not configured for that service.','error');
-  const moving=data.type==='job'?(state.schedules||[]).find(job=>job.id===data.id):null,hours=schedulePayloadHours(data),projection=scheduleCapacityState(team,date,moving?.id||'',hours),before=snapshotSchedule();
-  try{
-    let job=moving,previousDate=moving?.date||'',wasMissed=Boolean(moving&&scheduleJobNeedsOfficeActionV58928(moving));
+  const data=scheduleDragData(event),team=teamById(teamId);if(!data||!team){toast('The dragged work item could not be read.','error');return false;}if(scheduleIsPast(date)){toast('Past dates are locked. Choose today or a future date.','error');return false;}
+  const missing=typeof teamCanServiceV552==='function'?schedulePayloadServiceIds(data).filter(id=>!teamCanServiceV552(teamId,id)):[];if(missing.length){toast('This team is not configured for that service.','error');return false;}
+  const moving=data.type==='job'?(state.schedules||[]).find(job=>job.id===data.id):null,hours=schedulePayloadHours(data),projection=scheduleCapacityState(team,date,moving?.id||'',hours);
+  let job=null,previousDate=moving?.date||'',verifySchedule=null,needsCore=false;
+  const undoBefore=captureScheduleMutationV6084();
+  const saved=await runScheduleMutationV6084('Schedule placement',()=>{
+    job=moving;const wasMissed=Boolean(moving&&scheduleJobNeedsOfficeActionV58928(moving));
     if(job&&wasMissed){
-      const original=job,clone=JSON.parse(JSON.stringify(original));clone.id=uid('sch');clone.teamId=teamId;clone.date=date;clone.status='scheduled';clone.manualOverride=true;clone.autoGenerated=false;clone.autoAssigned=false;clone.sourceMissedJobIdV58931=original.id;clone.originalMissedDateV58931=original.date;clone.audit=[...(clone.audit||[]),{at:new Date().toISOString(),actor:'Office',action:'Missed visit rescheduled by drag',note:`${original.date} → ${date} · ${team.name}`}];delete clone.completedAt;delete clone.completedByTeamId;delete clone.resolution;delete clone.catchUpStatus;state.schedules.push(clone);job=clone;
-      markOriginalMissedAsRescheduledV58931(original,clone.id,`${date} · ${team.name}`);
+      const original=job,clone=JSON.parse(JSON.stringify(original));clone.id=uid('sch');clone.teamId=teamId;clone.date=date;clone.status='scheduled';clone.manualOverride=true;clone.autoGenerated=false;clone.autoAssigned=false;clone.sourceMissedJobIdV58931=original.id;clone.originalMissedDateV58931=original.date;clone.audit=[...(clone.audit||[]),{at:new Date().toISOString(),actor:'Office',action:'Missed visit rescheduled by drag',note:`${original.date} â†’ ${date} Â· ${team.name}`}];delete clone.completedAt;delete clone.completedByTeamId;delete clone.resolution;delete clone.catchUpStatus;state.schedules.push(clone);job=clone;
+      markOriginalMissedAsRescheduledV58931(original,clone.id,`${date} Â· ${team.name}`);
       (state.serviceCommitments||[]).filter(row=>row.scheduleJobId===original.id).forEach(row=>{row.scheduleJobId=clone.id;row.status='Scheduled';row.updatedAt=new Date().toISOString();});
       const catchUp=activeCatchUpForScheduleJobV58928(original);if(catchUp){catchUp.status='scheduled';catchUp.scheduledJobId=clone.id;catchUp.scheduledDate=date;catchUp.teamId=teamId;catchUp.scheduledAt=new Date().toISOString();}
-    }else if(job){const sourceWeek=startOfWeek(job.date);job.teamId=teamId;job.date=date;job.status='scheduled';job.manualOverride=true;job.autoGenerated=false;if(sourceWeek!==startOfWeek(date))job.movedFromWeekStartV58930=sourceWeek;}
+      verifySchedule={rows:[{id:original.id,status:'rescheduled'},{id:clone.id,date,teamId,status:'scheduled'}]};
+    }else if(job){const sourceWeek=startOfWeek(job.date);job.teamId=teamId;job.date=date;job.status='scheduled';job.manualOverride=true;job.autoGenerated=false;if(sourceWeek!==startOfWeek(date))job.movedFromWeekStartV58930=sourceWeek;verifySchedule={rows:[{id:job.id,date,teamId,status:'scheduled'}]};}
     else if(data.type==='queue'){
-      const row=scheduleUnplacedRowsV58930().find(item=>item.queueKey===data.queueKey);if(!row)throw new Error('Queue item not found');job=createScheduledJobFromRow(row,teamId,date);if(!job)return;
-      previousDate=row.basketItem?.originalDate||row.overflowItem?.originalDate||row.catchupRow?.job?.date||'';
+      const row=scheduleUnplacedRowsV58930().find(item=>item.queueKey===data.queueKey);if(!row)throw new Error('Queue item not found');job=createScheduledJobFromRow(row,teamId,date);if(!job)throw new Error('No job created');
+      previousDate=row.basketItem?.originalDate||row.overflowItem?.originalDate||row.catchupRow?.job?.date||'';needsCore=job.initialRecurringPlacementV6036===true;verifySchedule={rows:[{id:job.id,date,teamId,status:'scheduled'}]};
     }else{
       const ids=data.type==='estate'?data.clientIds:[data.clientId];for(const id of (ids||[])){const row=scheduleUnplacedRowsV58930().find(item=>item.client?.id===id);if(row)job=createScheduledJobFromRow(row,teamId,date)||job;}
+      if(job)verifySchedule={rows:[{id:job.id,date,teamId,status:'scheduled'}]};
     }
     if(!job)throw new Error('No job created');
     reorderScheduleLaneV58930(teamId,date,insertionIdsV58930(teamId,date,job.id,index));
-    if(!safeSaveV58930())throw new Error('save failed');renderSchedule();endScheduleDrag();
-    if(projection.key==='over')showScheduleUndo(`${team.name} is ${String(projection.label||'over capacity').toLowerCase()}. Keep this placement?`,before);else toast(`${scheduleClientName(clientById(job.clientId)||{})} scheduled for ${dayName(date)}.`);
-    recurringPlacementDialogV58930(job,previousDate);
-  }catch(error){console.error(error);restoreScheduleSnapshot(before);endScheduleDrag();toast('The appointment could not be placed. The previous schedule has been restored.','error');}
+    return {verifySchedule,verifyClient:needsCore?{id:job.clientId,preferredDay:dayName(date),preferredTeamId:teamId}:null,needsCore};
+  },{needsCore:value=>!!value?.needsCore});
+  if(!saved.ok){endScheduleDrag();return false;}
+  renderSchedule();endScheduleDrag();
+  if(projection.key==='over')showScheduleUndo(`${team.name} is ${String(projection.label||'over capacity').toLowerCase()}. Keep this placement?`,undoBefore);else toast(`${scheduleClientName(clientById(job.clientId)||{})} scheduled for ${dayName(date)}.`);
+  await Promise.resolve(recurringPlacementDialogV58930(job,previousDate));
+  return true;
+
+
 };
 window.scheduleDrop=function(event,teamId,date){const count=(state.schedules||[]).filter(job=>job.teamId===teamId&&job.date===date).length;return window.scheduleDropAtPositionV58930(event,teamId,date,count);};
 
@@ -13215,16 +13404,17 @@ createScheduledJobFromRow=function createScheduledJobFromRowV58945(row,teamId,da
 };
 
 const moveScheduleJobToBasketBaseV58945=moveScheduleJobToBasketV58931;
-moveScheduleJobToBasketV58931=function moveScheduleJobToBasketV58945(jobId){
+moveScheduleJobToBasketV58931=async function moveScheduleJobToBasketV58945(jobId){
   const source=(state.schedules||[]).find(job=>job.id===jobId),queueId=quoteQueueIdV58945(source),quoteId=quoteQueueQuoteIdV58945(source);
-  const result=moveScheduleJobToBasketBaseV58945(jobId);
+  const result=await moveScheduleJobToBasketBaseV58945(jobId);
   if(result&&quoteId){
     const item=ensureV58930State().find(entry=>quoteQueueQuoteIdV58945(entry)===quoteId);
-    if(item&&queueId&&!item.remoteQueueIdV58942){item.remoteQueueIdV58942=queueId;item.jobPayload=item.jobPayload||{};item.jobPayload.remoteQueueIdV58942=queueId;try{save();}catch(error){console.error(error);}}
+    if(item&&queueId&&!item.remoteQueueIdV58942){item.remoteQueueIdV58942=queueId;item.jobPayload=item.jobPayload||{};item.jobPayload.remoteQueueIdV58942=queueId;saveLocalOnlyV6084();}
     transitionAcceptedQuoteQueueV58945('reopen',{queueId,quoteId});
   }
   return result;
 };
+
 window.moveScheduleJobToBasketV58931=moveScheduleJobToBasketV58931;
 window.moveMissedJobToBasketV58931=moveScheduleJobToBasketV58931;
 
@@ -13380,13 +13570,14 @@ createScheduledJobFromRow=function createScheduledJobFromRowV58946(row,teamId,da
 };
 
 const moveScheduleJobToBasketBaseV58946=moveScheduleJobToBasketV58931;
-moveScheduleJobToBasketV58931=function moveScheduleJobToBasketV58946(jobId){
+moveScheduleJobToBasketV58931=async function moveScheduleJobToBasketV58946(jobId){
   collapseInvalidScheduleDuplicatesV58946(jobId);
   const source=(state.schedules||[]).find(job=>String(job.id)===String(jobId)),identity=acceptedQuoteIdentityV58946(source||{});
-  const result=moveScheduleJobToBasketBaseV58946(jobId);
-  if(result&&identity.key){setAcceptedQuoteLedgerV58946(identity,'basket');dedupeAcceptedQuoteBasketAtomicV58946();reopenAcceptedQuoteQueueV58946(identity);try{save();}catch(error){console.error(error);}}
+  const result=await moveScheduleJobToBasketBaseV58946(jobId);
+  if(result&&identity.key){setAcceptedQuoteLedgerV58946(identity,'basket');dedupeAcceptedQuoteBasketAtomicV58946();reopenAcceptedQuoteQueueV58946(identity);saveLocalOnlyV6084();}
   return result;
 };
+
 window.moveScheduleJobToBasketV58931=moveScheduleJobToBasketV58931;
 window.moveMissedJobToBasketV58931=moveScheduleJobToBasketV58931;
 
@@ -21354,7 +21545,7 @@ function operationalDeltaV59394(){
   return {current,schedules,workRecords,opportunities,quotes,invoices,metaChanged,hasChanges};
 }
 function operationalDeltaPayloadV59394(delta){
-  return {
+  const payload={
     p_business_id:backendV28.businessId,
     p_expected_revision:Number(backendV28.operationalRevision||0),
     p_schedules:delta.schedules.changed,
@@ -21367,6 +21558,7 @@ function operationalDeltaPayloadV59394(delta){
     p_deleted_quote_ids:delta.quotes.deleted,
     p_deleted_invoice_ids:delta.invoices.deleted
   };
+  return assertNoServiceSitesPayloadV6084(stripCloudTransientV6084(payload),'operational delta save');
 }
 function assertCloudBillingProfilePayloadV59658(payload,label='cloud save'){
   if(backendV28.mode!=='supabase')return true;
@@ -21637,7 +21829,7 @@ function coreDeltaV59395(){
   return {current,teams,clusters,customers,sites,businessChanged,hasChanges};
 }
 function coreDeltaPayloadV59395(delta){
-  return {
+  const payload={
     p_business_id:backendV28.businessId,
     p_expected_revision:Number(backendV28.coreRevision||0),
     p_business:delta.businessChanged?(delta.current.p_business||{}):null,
@@ -21650,6 +21842,7 @@ function coreDeltaPayloadV59395(delta){
     p_deleted_customer_ids:delta.customers.deleted,
     p_deleted_site_ids:delta.sites.deleted
   };
+  return assertNoServiceSitesPayloadV6084(stripCloudTransientV6084(payload),'core delta save');
 }
 function coreDeltaErrorV59395(error){
   const text=[error?.message,error?.details,error?.hint].map(value=>String(value||'').trim()).filter(Boolean).join(' ');
@@ -27187,33 +27380,25 @@ function scheduleMoveContextSetV6005(job){
   if(!job)return;
   scheduleMoveContextV6005.set(job.id,{date:String(job.date||''),teamId:String(job.teamId||'')});
 }
-function scheduleApplyFuturePatternV6005(job){
-  const client=clientById(job?.clientId),team=teamById(job?.teamId);if(!job||!client||!team)return {updated:0};
-  const day=dayName(job.date),anchor=String(job.date||'');
-  client.preferredDay=day;client.teamId=team.id;client.preferredTeamId=team.id;client.recurrenceAnchorDate=anchor;
-  (state.serviceAgreements||[]).filter(agreement=>agreement.clientId===client.id&&String(agreement.status||'').toLowerCase()==='active').forEach(agreement=>{
-    agreement.preferredDays=[day];agreement.defaultTeamId=team.id;
-    (agreement.lines||[]).filter(line=>line.active!==false).forEach(line=>{line.anchorDate=anchor;});
-    agreement.updatedAt=new Date().toISOString();
-  });
-  let updated=0;const touchedWeeks=new Set();const dayIndex=Math.max(0,DAYS.indexOf(day));
-  (state.schedules||[]).forEach(future=>{
-    if(future.id===job.id||future.clientId!==job.clientId||workMarkerForJobV5546(future)!=='R')return;
-    if(String(future.date||'')<=anchor)return;
-    const status=String(future.status||'scheduled').toLowerCase();
-    if(['completed','cancelled','canceled','rescheduled','deferred','no-charge','access-failed'].includes(status))return;
-    // Preserve deliberate future exceptions. Only the automatic pattern moves.
-    if(future.manualOverride===true||future.autoGenerated!==true)return;
-    const week=startOfWeek(future.date),target=weekDates(week)[dayIndex]||future.date;
-    future.date=target;future.teamId=team.id;future.autoAssigned=true;future.updatedAt=new Date().toISOString();
-    future.audit=[...(future.audit||[]),{at:new Date().toISOString(),actor:'Office',action:'Recurring pattern updated',note:`${day} · ${team.name}`}];
-    touchedWeeks.add(week);updated++;
-  });
-  touchedWeeks.forEach(week=>normaliseRouteOrderV14(weekDates(week)));
-  addJobAuditV14?.(job,'Recurring pattern updated',`${day} · ${team.name} · future visits`);
-  save();
-  return {updated,day,team:team.name};
+async function scheduleApplyFuturePatternV6005(job){
+  const client=clientById(job?.clientId),team=teamById(job?.teamId);if(!job||!client||!team)return {ok:false,updated:0};
+  const day=dayName(job.date),anchor=String(job.date||'');let updated=0,movedIds=[];
+  const saved=await runScheduleMutationV6084('Recurring pattern update',()=>{
+    client.preferredDay=day;client.teamId=team.id;client.preferredTeamId=team.id;client.recurrenceAnchorDate=anchor;
+    (state.serviceAgreements||[]).filter(agreement=>agreement.clientId===client.id&&String(agreement.status||'').toLowerCase()==='active').forEach(agreement=>{agreement.preferredDays=[day];agreement.defaultTeamId=team.id;(agreement.lines||[]).filter(line=>line.active!==false).forEach(line=>{line.anchorDate=anchor;});agreement.updatedAt=new Date().toISOString();});
+    const touchedWeeks=new Set(),dayIndex=Math.max(0,DAYS.indexOf(day));updated=0;movedIds=[];
+    (state.schedules||[]).forEach(future=>{
+      if(future.id===job.id||future.clientId!==job.clientId||workMarkerForJobV5546(future)!=='R')return;if(String(future.date||'')<=anchor)return;
+      const status=String(future.status||'scheduled').toLowerCase();if(['completed','cancelled','canceled','rescheduled','deferred','no-charge','access-failed'].includes(status))return;
+      if(future.manualOverride===true||future.autoGenerated!==true)return;
+      const week=startOfWeek(future.date),target=weekDates(week)[dayIndex]||future.date;future.date=target;future.teamId=team.id;future.autoAssigned=true;future.updatedAt=new Date().toISOString();future.audit=[...(future.audit||[]),{at:new Date().toISOString(),actor:'Office',action:'Recurring pattern updated',note:`${day} Â· ${team.name}`}];touchedWeeks.add(week);movedIds.push(future.id);updated++;
+    });
+    touchedWeeks.forEach(week=>normaliseRouteOrderV14(weekDates(week)));addJobAuditV14?.(job,'Recurring pattern updated',`${day} Â· ${team.name} Â· future visits`);
+    return {verifySchedule:{rows:[{id:job.id,date:job.date,teamId:job.teamId},...movedIds.map(id=>{const row=(state.schedules||[]).find(item=>item.id===id);return {id,date:row?.date,teamId:row?.teamId};})]},verifyClient:{id:client.id,preferredDay:day,preferredTeamId:team.id}};
+  },{needsCore:true});
+  return {ok:saved.ok,updated:saved.ok?updated:0,day,team:team.name};
 }
+
 recurringPlacementDialogV58930=function recurringPlacementDialogV6005(job,previousDate){
   if(!scheduleRecurringMoveEligibleV6005(job))return;
   const context=scheduleMoveContextV6005.get(job.id)||{date:previousDate||'',teamId:''};
@@ -27242,13 +27427,14 @@ window.scheduleDropAtPositionV58930=function scheduleDropAtPositionV6005(event,t
 };
 
 const saveMoveJobBaseV6005=window.saveMoveJobV20;
-if(typeof saveMoveJobBaseV6005==='function')window.saveMoveJobV20=function saveMoveJobV6005(event){
+if(typeof saveMoveJobBaseV6005==='function')window.saveMoveJobV20=async function saveMoveJobV6005(event){
   const job=(state.schedules||[]).find(row=>row.id===$('moveScheduleJobId')?.value),before=job?{date:job.date,teamId:job.teamId}:null;
   if(job)scheduleMoveContextSetV6005(job);
-  const result=saveMoveJobBaseV6005(event);
-  if(job&&before&&(before.date!==job.date||before.teamId!==job.teamId))recurringPlacementDialogV58930(job,before.date);
+  const result=await saveMoveJobBaseV6005(event);
+  if(result&&job&&before&&(before.date!==job.date||before.teamId!==job.teamId))await Promise.resolve(recurringPlacementDialogV58930(job,before.date));
   return result;
 };
+
 
 /* ---------- team/day instructions + ad-hoc non-client events ---------- */
 let scheduleActionsV6005=[];
@@ -28186,21 +28372,24 @@ window.__tuinbooksSingleVisitCancellationBuild=TUINBOOKS_SINGLE_VISIT_CANCEL_V60
     if(item&&!modeActive()){event.preventDefault();event.stopImmediatePropagation();toast('Turn on Drag mode to rearrange the schedule.');}
   },true);
 
-  recurringPlacementDialogV58930=function recurringPlacementScopeV6059(job,previousDate){
-    if(!job)return;
+  recurringPlacementDialogV58930=async function recurringPlacementScopeV6059(job,previousDate){
+    if(!job)return false;
     let eligible=false;
     try{eligible=typeof scheduleRecurringEligibleV6006==='function'?scheduleRecurringEligibleV6006(job):(typeof scheduleRecurringMoveEligibleV6005==='function'?scheduleRecurringMoveEligibleV6005(job):workMarkerForJobV5546(job)==='R');}catch(_){eligible=workMarkerForJobV5546(job)==='R';}
-    if(!eligible)return;
+    if(!eligible)return true;
     const context=typeof scheduleMoveContextV6005!=='undefined'&&scheduleMoveContextV6005?.get?.(job.id)?scheduleMoveContextV6005.get(job.id):{date:previousDate||'',teamId:''};
     try{scheduleMoveContextV6005?.delete?.(job.id);}catch(_){ }
     const changed=String(context?.date||previousDate||'')!==String(job.date||'')||(String(context?.teamId||'')&&String(context.teamId)!==String(job.teamId||''));
-    if(!changed)return;
-    if(currentScope()!=='future'){toast('This visit moved. Future recurring visits are unchanged.');return;}
-    if(typeof scheduleApplyFuturePatternV6005!=='function'){toast('This visit moved, but the future recurring pattern could not be updated.','error');return;}
-    const result=scheduleApplyFuturePatternV6005(job)||{};
+    if(!changed)return true;
+    if(currentScope()!=='future'){toast('This visit moved. Future recurring visits are unchanged.');return true;}
+    if(typeof scheduleApplyFuturePatternV6005!=='function'){toast('This visit moved, but the future recurring pattern could not be updated.','error');return false;}
+    const result=await scheduleApplyFuturePatternV6005(job)||{};
     try{renderSchedule();}catch(_){ }
-    toast(`Recurring pattern updated to ${result.day||dayName(job.date)} · ${result.team||teamById(job.teamId)?.name||'team'}.${result.updated?` ${result.updated} future visit${result.updated===1?'':'s'} moved.`:''}`);
+    if(!result.ok){toast('This visit is saved, but the future recurring pattern was not changed.','error');return false;}
+    toast(`Recurring pattern updated to ${result.day||dayName(job.date)} Â· ${result.team||teamById(job.teamId)?.name||'team'}.${result.updated?` ${result.updated} future visit${result.updated===1?'':'s'} moved.`:''}`);
+    return true;
   };
+
   window.recurringPlacementDialogV58930=recurringPlacementDialogV58930;
 
   function installStyles(){

@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.7.44';
+window.__TUINBOOKS_RELEASE__='60.8.6-stage2-direct-source';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -523,6 +523,7 @@ function showView(view){
 window.showView = showView; // v59.6.91 cross-wrapper scope export
 function renderActiveView(){
   ({schedule:renderSchedule,invoices:renderInvoiceCentre,clients:renderClients,records:renderRecords,quotes:renderQuotes,reports:renderReports,year:renderYearOverview,settings:renderSettings}[activeView]||(()=>{}))();
+  if(activeView==='records')queueMicrotask(()=>{try{renderWorkTeamProgressV6086();}catch(_){}});
 }
 function populateTeamSelects(){
   const options=state.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
@@ -793,7 +794,7 @@ function invoicePaperHtml(inv,c){
   const noteBlock=isQuote
     ?(notes?`<div class="invoice-paper-note"><strong>Quote details</strong>\n${esc(notes)}</div>`:'')
     :`<div class="invoice-paper-note"><strong>Banking details</strong>\n${esc(state.business.banking||'')}\n\n${esc(notes)}</div>`;
-  return `<div class="invoice-paper" data-document-kind="${kind}"><div class="invoice-paper-head"><div><img src="logo.png" alt="Logo"><h2>${esc(state.business.name)}</h2><p>${esc(state.business.address)}<br>${esc(state.business.phone)} • ${esc(state.business.email)}${vatIdentity}</p></div><div><span class="eyebrow">${documentLabel} number</span><h2>${esc(displayNumber)}</h2><p>${documentDate}</p></div></div>
+  return `<div class="invoice-paper" data-document-kind="${kind}"><div class="invoice-paper-head"><div><img src="/app/logo.png?v=60.8.6-stage2-direct-source" alt="Logo"><h2>${esc(state.business.name)}</h2><p>${esc(state.business.address)}<br>${esc(state.business.phone)} • ${esc(state.business.email)}${vatIdentity}</p></div><div><span class="eyebrow">${documentLabel} number</span><h2>${esc(displayNumber)}</h2><p>${documentDate}</p></div></div>
   <div class="invoice-party-grid"><div><span class="eyebrow">${isQuote?'Quote for':'Bill to'}</span><strong>${esc(c.name||'')}</strong><p>${esc(c.address||'')}<br>${esc(c.suburb||'')}<br>${esc(c.email||'')}</p></div><div><span class="eyebrow">${sideHeading}</span><p>${esc(sideText)}</p></div></div>
   <table><thead><tr><th>Qty</th><th>Description</th><th>Unit</th><th>Total</th></tr></thead><tbody>${(inv.lineItems||[]).map(l=>`<tr><td>${Number(l.qty)||0}</td><td>${esc(l.description)}</td><td>${money(l.unitPrice)}</td><td>${money(lineTotal(l))}</td></tr>`).join('')}</tbody></table>
   <div class="invoice-paper-totals">${totals}</div>${noteBlock}</div>`;
@@ -11839,7 +11840,7 @@ function applyWorkTabV58930(tab){
     renderRecords();const source=$('needsResolutionV56');if(inline){inline.innerHTML=source?.innerHTML||'<div class="ui-empty">No work needs an office decision.</div>';inline.classList.remove('hidden');}source?.classList.add('hidden');toolbar?.classList.add('hidden');host?.classList.add('hidden');return;
   }
   inline?.classList.add('hidden');toolbar?.classList.remove('hidden');host?.classList.remove('hidden');$('needsResolutionV56')?.classList.add('hidden');
-  if(workTabV58930==='all')renderAllWorkV58930();else renderRecords();
+  if(workTabV58930==='all')renderAllWorkV58930();else renderRecords();try{renderWorkTeamProgressV6086();}catch(_){}
 }
 window.applyWorkTabV58930 = applyWorkTabV58930; // v59.6.91 cross-wrapper scope export
 function quoteStatusGroupV58930(quote){const status=String(quote.status||'Draft').toLowerCase();if(['approved','accepted'].includes(status))return'accepted';if(['declined','cancelled','superseded'].includes(status))return'declined';return'open';}
@@ -22405,7 +22406,7 @@ invoicePaperHtml=function invoicePaperHtmlV59396(document,client){
   const totals=rate>0?`<div><span>Subtotal</span><strong>${money(subtotal)}</strong></div><div><span>VAT (${rate}%)</span><strong>${money(vat)}</strong></div><div class="final"><span>${isQuote?'Quote total':'Total due'}</span><strong>${money(total)}</strong></div>`:`<div class="final"><span>${isQuote?'Quote total':'Total due'}</span><strong>${money(total)}</strong></div>`;
   const details=[esc(profile.billingAddress||''),esc(profile.phone||''),esc(profile.email||''),legalBits].filter(Boolean).join('<br>');
   const note=[document?.notes&&`${isQuote?'Quote details':'Invoice note'}\n${document.notes}`,!isQuote&&bank&&`Banking details\n${bank}`,footer].filter(Boolean).join('\n\n');
-  return `<div class="invoice-paper" data-document-kind="${kind}" data-billing-profile="${esc(profile.id||'')}"><div class="invoice-paper-head"><div><img src="logo.png" alt="Logo"><h2>${esc(profile.legalName||profile.displayName)}</h2>${profile.tradingName?`<p>Trading as ${esc(profile.tradingName)}</p>`:''}<p>${details}</p></div><div><span class="eyebrow">${label} number</span><h2>${esc(number&&number!=='Draft'?number:`Draft ${label.toLowerCase()}`)}</h2><p>${fmtDate(date)}</p><span class="billing-profile-badge-v59396">${esc(billingProfileInitialsV59396(profile))}</span></div></div><div class="invoice-party-grid"><div><span class="eyebrow">${isQuote?'Quote for':'Bill to'}</span><strong>${esc(client?.name||'')}</strong><p>${esc(client?.address||'')}<br>${esc(client?.suburb||'')}<br>${esc(client?.email||'')}</p></div><div><span class="eyebrow">${isQuote?'Terms':'Payment'}</span><p>${esc(terms)}${document?.dueDate?`<br>Due ${esc(fmtDate(document.dueDate))}`:''}</p></div></div><table><thead><tr><th>Qty</th><th>Description</th><th>Unit</th><th>Total</th></tr></thead><tbody>${(document?.lineItems||[]).map(line=>`<tr><td>${Number(line.qty)||0}</td><td>${esc(line.description||'')}</td><td>${money(line.unitPrice)}</td><td>${money(lineTotal(line))}</td></tr>`).join('')}</tbody></table><div class="invoice-paper-totals">${totals}</div>${note?`<div class="invoice-paper-note">${esc(note)}</div>`:''}</div>`;
+  return `<div class="invoice-paper" data-document-kind="${kind}" data-billing-profile="${esc(profile.id||'')}"><div class="invoice-paper-head"><div><img src="/app/logo.png?v=60.8.6-stage2-direct-source" alt="Logo"><h2>${esc(profile.legalName||profile.displayName)}</h2>${profile.tradingName?`<p>Trading as ${esc(profile.tradingName)}</p>`:''}<p>${details}</p></div><div><span class="eyebrow">${label} number</span><h2>${esc(number&&number!=='Draft'?number:`Draft ${label.toLowerCase()}`)}</h2><p>${fmtDate(date)}</p><span class="billing-profile-badge-v59396">${esc(billingProfileInitialsV59396(profile))}</span></div></div><div class="invoice-party-grid"><div><span class="eyebrow">${isQuote?'Quote for':'Bill to'}</span><strong>${esc(client?.name||'')}</strong><p>${esc(client?.address||'')}<br>${esc(client?.suburb||'')}<br>${esc(client?.email||'')}</p></div><div><span class="eyebrow">${isQuote?'Terms':'Payment'}</span><p>${esc(terms)}${document?.dueDate?`<br>Due ${esc(fmtDate(document.dueDate))}`:''}</p></div></div><table><thead><tr><th>Qty</th><th>Description</th><th>Unit</th><th>Total</th></tr></thead><tbody>${(document?.lineItems||[]).map(line=>`<tr><td>${Number(line.qty)||0}</td><td>${esc(line.description||'')}</td><td>${money(line.unitPrice)}</td><td>${money(lineTotal(line))}</td></tr>`).join('')}</tbody></table><div class="invoice-paper-totals">${totals}</div>${note?`<div class="invoice-paper-note">${esc(note)}</div>`:''}</div>`;
 };
 previewQuoteEditor=async function previewQuoteEditorV59396(){
   try{const quote=commitQuoteEditorV58934();if(!await reserveQuoteNumberV5890(quote))return;const client=clientById(quote.clientId)||{};const temp={...quote,documentType:'quote',month:String(quote.date||localDateISO()).slice(0,7),vatRate:profileVatRateV59396(billingProfileForDocumentV59396(quote))};$('invoicePreviewTitle').textContent=`${quote.number} — ${client.name}`;$('invoicePreviewContent').innerHTML=invoicePaperHtml(temp,client);$('invoicePreviewDialog').showModal();}catch(error){quoteEditorErrorV58934(String(error?.message||error));}
@@ -28242,6 +28243,27 @@ function scheduleCancellationRoutineJobV6052(job){
   try{return typeof workMarkerForJobV5546==='function'?workMarkerForJobV5546(job)==='R':String(job?.revenueType||'').toLowerCase().includes('recurring');}
   catch(error){return String(job?.revenueType||'').toLowerCase().includes('recurring');}
 }
+
+/* ========================================================================== 
+   TuinBooks Stage 2 â€” direct-source deterministic correction
+   T27 client Save visibility; T39 Work progress; T40 durable cancellation.
+   ========================================================================== */
+const TUINBOOKS_STAGE2_DIRECT_SOURCE_V6086='60.8.6-stage2-direct-source';
+
+function renderWorkTeamProgressV6086(){
+  try{
+    const host=document.getElementById('workRecordCards');
+    if(!host)return;
+    document.querySelectorAll('#view-records .work-team-progress-v59692').forEach(node=>node.remove());
+    if(typeof installWorkTeamProgressStyleV59692==='function')installWorkTeamProgressStyleV59692();
+    const html=typeof workTeamProgressHtmlV59692==='function'?workTeamProgressHtmlV59692():'';
+    if(html)host.insertAdjacentHTML('beforebegin',html);
+  }catch(error){
+    console.warn('[TuinBooks Stage 2] Work team progress could not render:',error);
+  }
+}
+window.renderWorkTeamProgressV6086=renderWorkTeamProgressV6086;
+
 function scheduleCancellationRefreshBillingV6052(job){
   const client=clientById(job?.clientId),month=String(job?.date||'').slice(0,7);
   if(!client||!/^[0-9]{4}-[0-9]{2}$/.test(month))return;
@@ -28254,36 +28276,42 @@ function scheduleCancellationRefreshBillingV6052(job){
   try{if(typeof renderInvoiceCentre==='function'&&typeof activeView!=='undefined'&&activeView==='invoices')renderInvoiceCentre();}catch(error){}
 }
 
-window.applyScheduleCancellationV6052=function(jobId,mode,reason=''){
+window.applyScheduleCancellationV6052=async function(jobId,mode,reason=''){
   const job=(state.schedules||[]).find(row=>String(row.id)===String(jobId));
   if(!job)return toast('This visit could not be loaded.','error');
   const status=String(job.status||'scheduled').toLowerCase();
   if(status==='completed')return toast('A completed visit cannot be cancelled. Reopen/correct the Work record instead.','error');
   if(!scheduleCancellationRoutineJobV6052(job))return toast('This cancellation option is for routine client visits.','error');
   if(String(job.date||'')<localDateISO())return toast('Use the missed-visit resolution tools for a past visit.','error');
-  if(!['charge','no-charge'].includes(mode))return;
+  if(!['charge','no-charge'].includes(mode))return false;
 
-  const now=new Date().toISOString(),actor=scheduleCancellationActorV6052();
-  if(!scheduleCancellationIsOursV6052(job)){
-    job.cancellationPreviousStatusV6052=job.status||'scheduled';
-    job.cancellationPreviousChargeableV6052=job.chargeable;
-  }
-  job.status='cancelled';
-  job.chargeable=mode==='charge';
-  job.cancellationBillingV6052=mode;
-  job.cancelReason=String(reason||'Client cancelled this visit').trim()||'Client cancelled this visit';
-  job.cancelledAtV6052=now;
-  job.cancelledByV6052=actor;
-  job.updatedAt=now;
-  if(typeof addJobAuditV14==='function')addJobAuditV14(job,mode==='charge'?'Visit cancelled — charge client':'Visit cancelled — no charge',job.cancelReason);
-  try{if(typeof auditV56==='function')auditV56('schedule_job',job.id,mode==='charge'?'cancelled_billable':'cancelled_no_charge',{clientId:job.clientId,date:job.date,reason:job.cancelReason});}catch(error){}
-
-  save();
+  const label=mode==='charge'?'Cancel visit â€” charge':'Cancel visit â€” no charge';
+  try{window.closeScheduleTransientUiV6085?.();}catch(_){}
+  const saved=await runScheduleMutationV6084(label,()=>{
+    const now=new Date().toISOString(),actor=scheduleCancellationActorV6052();
+    if(!scheduleCancellationIsOursV6052(job)){
+      job.cancellationPreviousStatusV6052=job.status||'scheduled';
+      job.cancellationPreviousChargeableV6052=job.chargeable;
+    }
+    job.status='cancelled';
+    job.chargeable=mode==='charge';
+    job.cancellationBillingV6052=mode;
+    job.cancelReason=String(reason||'Client cancelled this visit').trim()||'Client cancelled this visit';
+    job.cancelledAtV6052=now;
+    job.cancelledByV6052=actor;
+    job.updatedAt=now;
+    if(typeof addJobAuditV14==='function')addJobAuditV14(job,mode==='charge'?'Visit cancelled â€” charge client':'Visit cancelled â€” no charge',job.cancelReason);
+    try{if(typeof auditV56==='function')auditV56('schedule_job',job.id,mode==='charge'?'cancelled_billable':'cancelled_no_charge',{clientId:job.clientId,date:job.date,reason:job.cancelReason});}catch(error){}
+    return {verifySchedule:{rows:[{id:job.id,status:'cancelled'}]}};
+  });
+  if(!saved?.ok)return false;
+  try{document.getElementById('singleVisitCancelDialogV6052')?.close();}catch(_){}
   scheduleCancellationRefreshBillingV6052(job);
+  try{window.closeScheduleTransientUiV6085?.();}catch(_){}
   if(typeof renderSchedule==='function')renderSchedule();
-  toast(mode==='charge'?'Visit cancelled. The client remains billable for this visit.':'Visit cancelled with no charge. Billing has been adjusted.');
+  toast(mode==='charge'?'Visit cancelled. Client remains chargeable.':'Visit cancelled. Client will not be charged.');
+  return true;
 };
-
 window.undoScheduleCancellationV6052=function(jobId){
   const job=(state.schedules||[]).find(row=>String(row.id)===String(jobId));
   if(!job||!scheduleCancellationIsOursV6052(job))return toast('There is no TuinBooks cancellation to undo.','error');

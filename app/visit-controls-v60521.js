@@ -996,3 +996,29 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();
 })();
+
+
+/* TuinBooks Stage 2 â€” direct source: canonical single-visit cancellation. */
+const TUINBOOKS_STAGE2_VISIT_CANCEL_SOURCE_V6086='60.8.6-stage2-visit-cancel-source';
+if(!window.__tuinbooksStage2VisitCancelCaptureV6086){
+  window.__tuinbooksStage2VisitCancelCaptureV6086=true;
+  document.addEventListener('click',event=>{
+    const button=event.target?.closest?.('.visit-controls-actions-v6054 button, [class*="visit-controls"] button');
+    if(!button)return;
+    const text=String(button.innerText||button.textContent||'').replace(/\s+/g,' ').trim();
+    let mode='';
+    if(/cancel visit.*(?:do not charge|no charge)|cancel.*no charge/i.test(text))mode='no-charge';
+    else if(/cancel visit.*charge|cancel.*charge/i.test(text))mode='charge';
+    if(!mode)return;
+    const detail=window.selectedScheduleDetailV23;
+    const jobId=detail?.mode==='job'?String(detail.jobId||''):'';
+    if(!jobId||typeof window.applyScheduleCancellationV6052!=='function')return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    try{window.closeScheduleTransientUiV6085?.();}catch(_){}
+    Promise.resolve(window.applyScheduleCancellationV6052(jobId,mode,'')).catch(error=>{
+      console.error('[TuinBooks Stage 2] cancellation action failed',error);
+    });
+  },true);
+}

@@ -1,5 +1,5 @@
-const CACHE='tuinbooks-v60-7-46-long-sticky-basket';
-const VERSION='60.7.46';
+const CACHE='tuinbooks-v60-8-6-stage2-direct-source';
+const VERSION='60.8.6-stage2-direct-source';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
   './tuinbooks-icon.png',
@@ -13,7 +13,7 @@ const SHELL=[
   './assets/ocr/tesseract.min.js',
   './vendor/supabase.js',
   './supabase-config.js',
-  './app.js?v=60.7.44-basket-drag-repair',
+  './app.js?v=60.8.6-stage2-direct-source',
   './demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair',
   './ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup',
   './ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup',
@@ -31,7 +31,7 @@ const SHELL=[
   './onboarding-master-import-v60423.js?v=60.4.24-onboarding-import-self-closing-cell-fix',
   './business-needs-attention-v6052.js?v=60.5.5-business-needs-attention-import-link',
   './mobile-profiles-v60430.js?v=60.4.30',
-  './visit-controls-v60521.js?v=60.5.21',
+  './visit-controls-v60521.js?v=60.8.6-stage2-direct-source',
   './schedule-drag-mode-v6061.js?v=60.7.45-drag-toggle-single-owner',
   './schedule-drag-basket-v6066.js?v=60.7.46-long-sticky-basket',
   './business-data-export-v6072.js?v=60.7.5-cumulative-export-schedule-fix',

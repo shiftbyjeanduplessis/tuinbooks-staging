@@ -818,6 +818,7 @@ function printInvoicePreviewV59389(){
 
 /* ---------- Clients ---------- */
 function renderClients(){
+  if(document.body?.dataset?.app!=='desktop')return;
   const term=($('clientSearch').value||'').toLowerCase(); const filter=$('clientStatusFilter').value;
   const clients=state.clients.filter(c=>{
     const match=!term||`${c.name} ${c.address} ${c.suburb} ${c.contact} ${c.whatsapp}`.toLowerCase().includes(term);
@@ -837,7 +838,7 @@ window.editClient=(id)=>{
     requestAnimationFrame(()=>$('clientForm')?.scrollIntoView({behavior:'smooth',block:'start'}));
   }
 };
-function clearClientForm(){ $('clientForm').reset();$('clientId').value='';$('clientFormTitle').textContent='Add client';$('clientStatus').value='active';if($('clientFixedDay'))$('clientFixedDay').checked=false;$('clientEstimatedHours').value=1;$('clientTeam').value=state.teams[0]?.id||''; }
+function clearClientForm(){ if(document.body?.dataset?.app!=='desktop')return; $('clientForm').reset();$('clientId').value='';$('clientFormTitle').textContent='Add client';$('clientStatus').value='active';if($('clientFixedDay'))$('clientFixedDay').checked=false;$('clientEstimatedHours').value=1;$('clientTeam').value=state.teams[0]?.id||''; }
 function saveClientForm(event){
   event.preventDefault(); const id=$('clientId').value; let c=id?clientById(id):{id:uid('client'),createdAt:localDateISO(),incomplete:false};
   Object.assign(c,{name:$('clientName').value.trim(),customerType:$('clientCustomerType')?.value||'Private homeowner',contact:$('clientContact').value.trim(),address:$('clientAddress').value.trim(),suburb:$('clientSuburb').value.trim(),whatsapp:$('clientWhatsapp').value.trim(),email:$('clientEmail').value.trim(),monthlyFee:Number($('clientMonthlyFee').value||0),frequency:$('clientFrequency').value,preferredDay:$('clientPreferredDay').value,fixedDay:!!$('clientFixedDay')?.checked,estimatedHours:Number($('clientEstimatedHours').value||1),teamId:$('clientTeam').value,status:$('clientStatus').value,serviceDescription:$('clientServiceDescription').value.trim(),accessNotes:$('clientAccessNotes').value.trim(),gardenNotes:$('clientGardenNotes').value.trim(),incomplete:false});
@@ -1401,6 +1402,7 @@ function prepareResend(inv,method,pendingWindow=null){
 }
 
 function renderClients(){
+  if(document.body?.dataset?.app!=='desktop')return;
   const term=($('clientSearch').value||'').toLowerCase(); const filter=$('clientStatusFilter').value;
   const clients=state.clients.filter(c=>{const match=!term||`${c.name} ${c.address} ${c.suburb} ${c.contact} ${c.whatsapp} ${c.email}`.toLowerCase().includes(term);const status=filter==='all'||(filter==='incomplete'?c.incomplete:c.status===filter);return match&&status;});
   const active=state.clients.filter(c=>c.status==='active').length, incompleteClients=state.clients.filter(c=>c.incomplete), paused=state.clients.filter(c=>c.status==='paused').length, monthly=state.clients.filter(c=>c.status==='active').reduce((s,c)=>s+Number(c.monthlyFee||0),0);
@@ -1408,7 +1410,7 @@ function renderClients(){
   $('incompleteClientAlert').innerHTML=incompleteClients.length?`<section class="incomplete-client-alert"><div><span class="eyebrow">Needs admin attention</span><h2>${incompleteClients.length} incomplete client record${incompleteClients.length===1?'':'s'}</h2><p>Quick jobs remain linked to their visit records. The client can receive the mobile visit report, but invoicing is blocked until the record is confirmed.</p></div><div class="incomplete-cta-list">${incompleteClients.slice(0,4).map(c=>`<button class="button secondary compact" onclick="completeClientForInvoice('${c.id}')">Complete ${esc(c.name||c.address||'client')}</button>`).join('')}</div></section>`:'';
   $('clientList').innerHTML=clients.map(c=>`<article class="client-row" onclick="editClient('${c.id}')"><div><strong>${esc(c.name||'Unnamed client')}</strong><small>${esc(c.address||'Address missing')} • ${esc(c.suburb||'Suburb missing')}<br>${esc(c.contact||'No contact')} • ${esc(c.frequency)}</small></div><div class="client-row-meta"><span class="status-badge ${c.incomplete?'review':c.status==='active'?'ready':'neutral'}">${c.incomplete?'Incomplete':esc(c.status)}</span><strong>${money(c.monthlyFee)}</strong>${c.incomplete?`<button class="button compact" onclick="event.stopPropagation();completeClientForInvoice('${c.id}')">Complete client</button>`:''}</div></article>`).join('')||'<p>No clients match this filter.</p>';
 }
-function clearClientForm(){ $('clientForm').reset();$('clientId').value='';$('clientFormTitle').textContent='New client';$('clientStatus').value='active';if($('clientFixedDay'))$('clientFixedDay').checked=false;$('clientEstimatedHours').value=1;$('clientTeam').value=state.teams[0]?.id||''; }
+function clearClientForm(){ if(document.body?.dataset?.app!=='desktop')return; $('clientForm').reset();$('clientId').value='';$('clientFormTitle').textContent='New client';$('clientStatus').value='active';if($('clientFixedDay'))$('clientFixedDay').checked=false;$('clientEstimatedHours').value=1;$('clientTeam').value=state.teams[0]?.id||''; }
 function saveClientForm(event){
   event.preventDefault(); const id=$('clientId').value; let c=id?clientById(id):{id:uid('client'),createdAt:localDateISO(),incomplete:false};
   Object.assign(c,{name:$('clientName').value.trim(),customerType:$('clientCustomerType')?.value||'Private homeowner',contact:$('clientContact').value.trim(),address:$('clientAddress').value.trim(),suburb:$('clientSuburb').value.trim(),whatsapp:$('clientWhatsapp').value.trim(),email:$('clientEmail').value.trim(),monthlyFee:Number($('clientMonthlyFee').value||0),frequency:$('clientFrequency').value,preferredDay:$('clientPreferredDay').value,fixedDay:!!$('clientFixedDay')?.checked,estimatedHours:Number($('clientEstimatedHours').value||1),teamId:$('clientTeam').value,status:$('clientStatus').value,serviceDescription:$('clientServiceDescription').value.trim(),accessNotes:$('clientAccessNotes').value.trim(),gardenNotes:$('clientGardenNotes').value.trim()});
@@ -13760,6 +13762,7 @@ editClient=window.editClient;
 
 const clearClientFormBaseV58951=clearClientForm;
 clearClientForm=function clearClientFormV58951(){
+  if(document.body?.dataset?.app!=='desktop')return;
   clearClientFormBaseV58951();const start=localDateISO();if($('clientRecurrenceAnchor'))$('clientRecurrenceAnchor').value=start;if($('clientServiceStartDate'))$('clientServiceStartDate').value=start;
   if($('clientPreferredDay'))$('clientPreferredDay').value=dayName(start);if($('clientFixedDay'))$('clientFixedDay').checked=false;if($('clientPreferredTeam'))$('clientPreferredTeam').value='';
   renderRecurrenceAnchorFieldV53();installClientSimplicityV58951();
@@ -13781,6 +13784,7 @@ saveClientForm=function saveClientFormV58951(event){
 
 const renderClientsBaseV58951=renderClients;
 renderClients=function renderRecurringClientsOnlyV58951(){
+  if(document.body?.dataset?.app!=='desktop')return;
   const all=state.clients||[];state.clients=all.filter(isRecurringClientV58951);
   try{return renderClientsBaseV58951();}finally{state.clients=all;}
 };
@@ -15125,6 +15129,7 @@ saveClientForm=function saveClientFormV58961(event){
 };
 
 function initialiseClientStatusV58961(){
+  if(document.body?.dataset?.app!=='desktop')return;
   normaliseLegacyClientStatusesV58961();
   installTwoStateClientStatusV58961();
   if(!$('clientId')?.value&&$('clientStatus'))$('clientStatus').value='active';
@@ -15138,6 +15143,9 @@ else initialiseClientStatusV58961();
 window.__tuinbooksBuild=TUINBOOKS_V58961;
 window.__tuinbooksV58961Test={normalClientStatusV58961,automaticRecurringJobV58961,removeFutureRecurringVisitsForPausedClientV58961};
 
+
+const TUINBOOKS_PHASE3_MOBILE_DESKTOP_GUARD_V6088='60.8.8-phase3-mobile-desktop-runtime-separation';
+window.__tuinbooksPhase3MobileDesktopGuardV6088=TUINBOOKS_PHASE3_MOBILE_DESKTOP_GUARD_V6088;
 
 /* ---------- v59.3.6 final management tenant routing ---------- */
 const TUINBOOKS_MANAGEMENT_ROUTING_V5936='59.3.8';
@@ -21101,6 +21109,7 @@ window.editClient=function editClientV59388(id){
 editClient=window.editClient;
 
 function initialiseClientWorkspaceScrollV59388(){
+  if(document.body?.dataset?.app!=='desktop')return;
   window.addEventListener('resize',queueClientWorkspaceHeightV59388,{passive:true});
   window.addEventListener('scroll',queueClientWorkspaceHeightV59388,{passive:true});
   const layout=$('view-clients')?.querySelector('.clients-layout');

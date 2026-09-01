@@ -1,5 +1,5 @@
-const CACHE='tuinbooks-v60-8-7-stage2-correction2';
-const VERSION='60.8.7-stage2-correction2';
+const CACHE='tuinbooks-v60-8-8-phase3-mobile-runtime';
+const VERSION='60.8.8-phase3-mobile-runtime';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
   './tuinbooks-icon.png',
@@ -13,7 +13,7 @@ const SHELL=[
   './assets/ocr/tesseract.min.js',
   './vendor/supabase.js',
   './supabase-config.js',
-  './app.js?v=60.8.7-stage2-correction2',
+  './app.js?v=60.8.8-phase3-mobile-runtime',
   './demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair',
   './ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup',
   './ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup',
@@ -43,7 +43,7 @@ const SHELL=[
   './release-marker.js?v=60.8.0',
   './',
   './index.html',
-  './mobile.html?v=60.8.7-stage2-correction2',
+  './mobile.html?v=60.8.8-phase3-mobile-runtime',
   './client-login.html',
   './office-activate.html',
   './accept.html',

@@ -352,6 +352,44 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
     }
   }
 </style>
+
+<style id="TUINBOOKS_PHASE3_RESPONSIVE_SETTINGS_V6088">
+@media (max-width:720px){
+  #view-settings,
+  #view-settings .settings-grid{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  #view-settings .settings-grid > .panel,
+  #view-settings > .panel,
+  #view-settings .settings-quick-nav.panel{
+    width:calc(100vw - 20px)!important;
+    max-width:calc(100vw - 20px)!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+  #view-settings .span-two-panel{
+    grid-column:1 / -1!important;
+    min-width:0!important;
+    max-width:calc(100vw - 20px)!important;
+    box-sizing:border-box!important;
+  }
+  #view-settings .section-title-row,
+  #view-settings .dialog-actions,
+  #view-settings .team-setting-row,
+  #view-settings .cluster-setting-card,
+  #view-settings .service-catalog-row-v55{
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+    flex-wrap:wrap!important;
+  }
+}
+</style>
 </head>
 <body class="desktop-body" data-app="desktop">
   <section id="backendGate" class="backend-gate" aria-live="polite">
@@ -1807,8 +1845,8 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
   <script src="vendor/supabase.js"></script>
   <script src="supabase-config.js"></script>
   <script src="schedule-read-v60522.js?v=60.5.22"></script>
-  <script>window.__TUINBOOKS_INDEX_RELEASE__='60.8.7-stage2-correction2';window.__TUINBOOKS_SCHEDULE_RELEASE__='60.7.44';</script>
-  <script src="app.js?v=60.8.7-stage2-correction2"></script>
+  <script>window.__TUINBOOKS_INDEX_RELEASE__='60.8.8-phase3-mobile-runtime';window.__TUINBOOKS_SCHEDULE_RELEASE__='60.7.44';</script>
+  <script src="app.js?v=60.8.8-phase3-mobile-runtime"></script>
   <script src="demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair"></script>
   <script src="ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
   <script src="ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup"></script>

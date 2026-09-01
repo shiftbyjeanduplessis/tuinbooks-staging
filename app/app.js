@@ -11736,6 +11736,62 @@ window.openBasketItemInfoV58931=function(key){
   const client=row.client||{},marker=row.workMarker||workMarkerForQueueV5546(row),services=(row.serviceIds||[]).map(id=>serviceByIdV55?.(id)?.name||serviceByIdV55?.(id)?.shortLabel).filter(Boolean),sourceDate=row.basketItem?.originalDate||row.catchupRow?.job?.date||row.overflowItem?.originalDate||row.outstandingDate||'',duration=formatScheduleDuration(Number(row.estimatedMinutes||60)/60);
   dialog.innerHTML=`<form method="dialog" class="dialog-shell"><div class="dialog-heading"><div><span class="eyebrow">${esc(queueLabelV58930(row))}</span><h2>${esc(scheduleClientName(client))}</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></div><div class="basket-info-grid-v58931"><div><span>Type</span><strong>${marker==='R'?'Recurring visit':'Once-off work'}</strong></div><div><span>Duration</span><strong>${esc(duration)}</strong></div><div><span>Area</span><strong>${esc(scheduleClientSuburb(client)||'Not set')}</strong></div><div><span>Original / received</span><strong>${esc(sourceDate?fmtDate(sourceDate):'Not recorded')}</strong></div></div><section class="basket-info-section-v58931"><h3>Work</h3><p>${esc(services.join(', ')||row.reason||'Garden service')}</p></section>${row.reason?`<section class="basket-info-section-v58931"><h3>Why it is in the basket</h3><p>${esc(row.reason)}</p></section>`:''}<div class="dialog-actions"><button class="button secondary" value="cancel">Close</button><button class="button" value="cancel" onclick="toast('Drag this card onto the required team, day and position.')">Place by dragging</button></div></form>`;dialog.showModal();
 };
+
+/* ==========================================================================
+   TuinBooks Stage 1 â€” deterministic-QA source correction
+   T17 basket containment; T22 standard drag; T26 clean Rearrange exit.
+   ========================================================================== */
+const TUINBOOKS_STAGE1_QWEN_REPAIR_V6085='60.8.5-stage1-qwen-repair';
+
+function scheduleRearrangeActiveV6085(){
+  return !!document.body && (
+    document.body.classList.contains('schedule-drag-mode-active-v6059') ||
+    document.body.classList.contains('schedule-drag-mode-active-v6061')
+  );
+}
+function fitScheduleBasketToViewportV6085(drawer){
+  if(!drawer || drawer.classList.contains('hidden') || scheduleRearrangeActiveV6085())return;
+  const margin=12, viewport=Math.max(320,Number(window.innerHeight||0));
+  const rect=drawer.getBoundingClientRect();
+  let top=Math.max(margin,Number.isFinite(rect.top)?rect.top:margin);
+  const minHeight=180;
+  if(top>viewport-minHeight-margin)top=Math.max(margin,viewport-minHeight-margin);
+  const available=Math.max(minHeight,viewport-top-margin);
+  drawer.style.position='fixed';
+  drawer.style.top=Math.round(top)+'px';
+  drawer.style.bottom='auto';
+  drawer.style.maxHeight=Math.floor(available)+'px';
+  drawer.style.overflow='hidden';
+  drawer.style.display='flex';
+  drawer.style.flexDirection='column';
+  const body=drawer.querySelector('.schedule-basket-body-v58931');
+  if(body){
+    body.style.minHeight='0';
+    body.style.flex='1 1 auto';
+    body.style.overflowY='auto';
+    body.style.overscrollBehavior='contain';
+  }
+  const finalRect=drawer.getBoundingClientRect();
+  if(finalRect.bottom>viewport-margin){
+    const safeTop=Math.max(margin,viewport-finalRect.height-margin);
+    drawer.style.top=Math.round(safeTop)+'px';
+    drawer.style.maxHeight=Math.max(minHeight,Math.floor(viewport-safeTop-margin))+'px';
+  }
+}
+function clearScheduleTransientUiV6085(){
+  try{selectedScheduleDetailV23=null;}catch(_){}
+  try{$('scheduleDetailPanel')?.classList.add('hidden');}catch(_){}
+  try{if($('teamDayDetailDialog')?.open)$('teamDayDetailDialog').close();}catch(_){}
+  try{if($('recurringPlacementDialogV58930')?.open)$('recurringPlacementDialogV58930').close();}catch(_){}
+  try{document.querySelectorAll('#view-schedule .schedule-control-room.detail-open').forEach(n=>n.classList.remove('detail-open'));}catch(_){}
+  try{document.body?.classList.remove('schedule-zoom-open');}catch(_){}
+}
+window.closeScheduleTransientUiV6085=clearScheduleTransientUiV6085;
+if(!window.__tbStage1BasketResizeV6085){
+  window.__tbStage1BasketResizeV6085=true;
+  window.addEventListener('resize',()=>{try{fitScheduleBasketToViewportV6085($('scheduleParkingLotV5537'));}catch(_){}},{passive:true});
+}
+
 function renderScheduleQueue(){
   // Final Schedule Basket renderer. Keep all basket data/state work inside the
   // main app closure so scheduleUnplacedRowsV58930 and scheduleQueueOpen are
@@ -11756,6 +11812,8 @@ function renderScheduleQueue(){
   drawer.innerHTML=`<header class="schedule-basket-head-v58930 schedule-queue-move-handle"><div><span class="eyebrow">Drag this window to move it</span><h2>Schedule basket <span>${all.length}</span></h2></div><div class="schedule-basket-window-actions-v58931"><button type="button" class="icon-button" onclick="toggleScheduleBasketMinimisedV58931()" aria-label="${scheduleBasketMinimisedV58931?'Expand':'Minimise'} Schedule basket">${scheduleBasketMinimisedV58931?'□':'—'}</button><button type="button" class="icon-button" onclick="closeScheduleQueue()" aria-label="Close Schedule basket">×</button></div></header><div class="schedule-basket-body-v58931"><div class="schedule-basket-drop-hint-v58930">Drop here to unschedule safely</div>${all.length>5?`<input class="control" value="${esc(scheduleBasketSearchV58930)}" oninput="setScheduleQueueSearch(this.value)" placeholder="Search basket">`:''}<div class="schedule-basket-groups-v58930">${basketGroupV58930('Catch-up',catchup)}${basketGroupV58930('Once-off work',once)}${basketGroupV58930('Recurring work',recurring)}${basketGroupV58930('Could not fit',overflow)}${rows.length?'':'<div class="ui-empty compact">The basket is empty.</div>'}</div></div>`;
   loadQueuePositionV5546?.();if(Number.isFinite(scheduleQueuePositionV5544?.left)&&Number.isFinite(scheduleQueuePositionV5544?.top)){scheduleQueuePositionV5544=clampQueuePositionV5546(drawer,scheduleQueuePositionV5544.left,scheduleQueuePositionV5544.top);applyQueuePositionV5546?.(drawer,scheduleQueuePositionV5544);}
   enableQueueDragV5544?.(drawer);
+
+  try{fitScheduleBasketToViewportV6085($('scheduleParkingLotV5537'));}catch(_){}
 }
 window.openScheduleQueue=function(){scheduleQueueOpen=true;scheduleBasketMinimisedV58931=false;document.body?.classList.add('v6007-basket-open');renderScheduleQueue();};
 window.closeScheduleQueue=function(){scheduleQueueOpen=false;scheduleBasketMinimisedV58931=false;document.body?.classList.remove('v6007-basket-open');renderScheduleQueue();};
@@ -16572,6 +16630,15 @@ scheduleBoard=function scheduleBoardV59320(dates,visibleJobs,allJobs){
 
 window.scheduleSelectModeV59320=false;
 window.handleScheduleCardClickV59320=function(event,jobId){
+  if(scheduleRearrangeActiveV6085()){
+    event?.preventDefault?.();event?.stopPropagation?.();event?.stopImmediatePropagation?.();
+    try{
+      if(scheduleSelectedJobsV59320.has(jobId))scheduleSelectedJobsV59320.delete(jobId);
+      else scheduleSelectedJobsV59320.add(jobId);
+      renderScheduleBulkBarV59320();syncScheduleSelectionClassesV59320();
+    }catch(_){}
+    return;
+  }
   if(!scheduleSelectModeV59320){openScheduleJobV55(jobId);return;}
   event.preventDefault();event.stopPropagation();
   if(scheduleSelectedJobsV59320.has(jobId))scheduleSelectedJobsV59320.delete(jobId);else scheduleSelectedJobsV59320.add(jobId);
@@ -28339,7 +28406,7 @@ window.__tuinbooksSingleVisitCancellationBuild=TUINBOOKS_SINGLE_VISIT_CANCEL_V60
   function dragCandidates(){try{return [...document.querySelectorAll('#view-schedule [ondragstart]')];}catch(_){return [];}}
   function syncDraggableState(){
     const active=modeActive();
-    dragCandidates().forEach(el=>{el.setAttribute('draggable',active?'true':'false');el.classList.toggle('schedule-drag-enabled-v6059',active);});
+    dragCandidates().forEach(el=>{el.setAttribute('draggable','true');el.draggable=true;el.classList.toggle('schedule-drag-enabled-v6059',active);});
     document.body?.classList.toggle('schedule-drag-mode-active-v6059',active);
   }
   function refreshScheduleChrome(){try{renderRollingScheduleOverviewV6001();}catch(_){ }syncDraggableState();}
@@ -28354,7 +28421,11 @@ window.__tuinbooksSingleVisitCancellationBuild=TUINBOOKS_SINGLE_VISIT_CANCEL_V60
   window.setScheduleDragScopeV6056=window.setScheduleDragScopeV6059;
   window.toggleScheduleDragModeV6059=function(force){
     dragMode=typeof force==='boolean'?force:!dragMode;
-    if(!dragMode){try{window.endScheduleDrag?.();}catch(_){ }try{document.querySelectorAll('.schedule-day-lane.drag-preview').forEach(el=>el.classList.remove('drag-preview','preview-safe','preview-near','preview-over','preview-blocked'));}catch(_){ }}
+    try{clearScheduleTransientUiV6085();}catch(_){}
+    if(!dragMode){
+      try{window.clearScheduleDragSelectionV6065?.();}catch(_){}
+      try{clearScheduleTransientUiV6085();}catch(_){}
+      try{document.body?.classList.remove('schedule-drag-mode-active-v6061');}catch(_){}try{window.endScheduleDrag?.();}catch(_){ }try{document.querySelectorAll('.schedule-day-lane.drag-preview').forEach(el=>el.classList.remove('drag-preview','preview-safe','preview-near','preview-over','preview-blocked'));}catch(_){ }}
     refreshScheduleChrome();
     toast(dragMode?`Drag mode on — ${scope==='future'?'this + future':'this visit'}.`:'Drag mode off. Schedule locked.');
   };
@@ -28369,7 +28440,7 @@ window.__tuinbooksSingleVisitCancellationBuild=TUINBOOKS_SINGLE_VISIT_CANCEL_V60
 
   document.addEventListener('dragstart',event=>{
     const item=event.target?.closest?.('#view-schedule [ondragstart]');
-    if(item&&!modeActive()){event.preventDefault();event.stopImmediatePropagation();toast('Turn on Drag mode to rearrange the schedule.');}
+    if(item&&!modeActive()){scope='once';persistScope();}
   },true);
 
   recurringPlacementDialogV58930=async function recurringPlacementScopeV6059(job,previousDate){

@@ -2,6 +2,7 @@
    Loaded last, after the frozen schedule renderer and card-layout repair.
    Owns the visible Drag mode state and synchronises it to the actual cards. */
 (()=>{
+  const TUINBOOKS_STAGE1_DRAGMODE_SOURCE_V6085='60.8.5-stage1-qwen-repair';
   const BUILD='60.7.45-drag-toggle-single-owner';
   const STORAGE_KEY='tuinbooks.scheduleDragScope.v6061';
   let active=false;               // deliberately OFF after every page reload
@@ -38,8 +39,8 @@
     document.body?.classList.toggle('schedule-drag-mode-active-v6061',active);
 
     movableCards().forEach(card=>{
-      card.draggable=active;
-      card.setAttribute('draggable',active?'true':'false');
+      card.draggable=true;
+      card.setAttribute('draggable','true');card.draggable=true;
       card.classList.toggle('schedule-drag-enabled-v6059',active);
       card.classList.toggle('schedule-drag-enabled-v6061',active);
     });
@@ -128,17 +129,10 @@
 
   // Hard safety gate: no Schedule card can begin a drag while Drag mode is off.
   document.addEventListener('dragstart',event=>{
-    const card=event.target?.closest?.('#view-schedule .schedule-card-clean.v6059-minimal-card, #view-schedule .v6006-job[data-job-id]');
-    if(!card)return;
-    if(!active){
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      toastSafe('Turn on Drag mode to rearrange the schedule.');
-      return;
+    const card=event.target?.closest?.('#view-schedule [ondragstart]');
+    if(card&&!document.body?.classList.contains('schedule-drag-mode-active-v6061')&&!document.body?.classList.contains('schedule-drag-mode-active-v6059')){
+      try{window.setScheduleDragScopeV6059?.('once');}catch(_){}
     }
-    // Ensure native drag remains enabled even if a renderer replaced the card a moment ago.
-    card.draggable=true;
-    card.setAttribute('draggable','true');
   },true);
 
   function installStyles(){

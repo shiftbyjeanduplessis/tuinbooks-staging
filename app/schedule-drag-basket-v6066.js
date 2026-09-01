@@ -7,6 +7,7 @@
    - Dragging any selected ticket into the basket sends the selected group.
 */
 (()=>{
+  const TUINBOOKS_STAGE1_DRAGBASKET_SOURCE_V6085='60.8.5-stage1-qwen-repair';
   const BUILD='60.7.46-long-sticky-basket';
   const MULTI_MIME='application/x-tuinbooks-schedule-job-ids';
   const fallbackSelection=new Set();
@@ -148,9 +149,7 @@
 
   function syncNativeDraggableV60712(active){
     movableCards().forEach(card=>{
-      const eligible=active&&(card.classList.contains('v6006-job')||card.classList.contains('schedule-drag-enabled-v6061')||card.classList.contains('schedule-drag-enabled-v6059'));
-      card.draggable=eligible;
-      card.setAttribute('draggable',eligible?'true':'false');
+      card.draggable=true;card.setAttribute('draggable','true');card.classList.toggle('schedule-standard-draggable-v6085',!active);
     });
   }
 
@@ -232,6 +231,7 @@
         setTimeout(()=>{queueSync();},0);
       }else{
         clearSelection({quiet:true});
+        try{window.closeScheduleTransientUiV6085?.();}catch(_){}
         restoreBasketAfterDragMode();
       }
     }
@@ -656,9 +656,7 @@
       return;
     }
     const card=event.target?.closest?.('#weeklyScheduleBoard .schedule-card-clean[data-job-id][ondragstart], #weeklyScheduleBoard .v6006-job[data-job-id][ondragstart]');
-    if(card&&(event.ctrlKey||event.metaKey)){
-      event.preventDefault();event.stopImmediatePropagation();toggleSelected(String(card.dataset.jobId||''));
-    }
+    if(card&&!event.target?.closest?.('.schedule-card-info-v58931')){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();toggleSelected(String(card.dataset.jobId||''));return;}
   }
 
   function onKeyDown(event){

@@ -15266,6 +15266,27 @@ async function loadManagementCoreWorkspaceV59338(businessId){
   );
 }
 
+const loadManagementCoreWorkspaceBaseV6089=loadManagementCoreWorkspaceV59338;
+loadManagementCoreWorkspaceV59338=async function loadManagementCoreWorkspaceV6089(businessId){
+  backendV28.managementCoreHydratingV6089=true;
+  clearTimeout(backendV28.syncTimer);
+  backendV28.syncTimer=null;
+  backendV28.pendingSnapshot=null;
+  backendV28.syncQueued=false;
+  try{
+    const result=await loadManagementCoreWorkspaceBaseV6089(businessId);
+    clearTimeout(backendV28.syncTimer);
+    backendV28.syncTimer=null;
+    backendV28.pendingSnapshot=null;
+    backendV28.syncQueued=false;
+    backendV28.lastSnapshotJson=coreSnapshotJsonV28(makeCoreSnapshotV28());
+    backendV28.coreDirty=false;
+    return result;
+  }finally{
+    backendV28.managementCoreHydratingV6089=false;
+  }
+};
+
 async function openManagementWorkspaceV5936(session){
   if(backendV28.managementLoadPromiseV5936){
     return backendV28.managementLoadPromiseV5936;
@@ -21938,17 +21959,57 @@ function clearCoreSaveStateV59395(){
 }
 
 const syncCoreSnapshotBaseV59395=syncCoreSnapshotV28;
+/* ==========================================================================
+   TuinBooks v60.8.9 â€” Phase 3 core-save gate
+   Prevent a loaded Management workspace from falling back to the legacy
+   full-core snapshot writer while its authoritative delta baseline is loading.
+   Critical Schedule saves may wait briefly for a normal delta save to finish.
+   ========================================================================== */
+const TUINBOOKS_PHASE3_CORE_SAVE_GATE_V6089='60.8.9-phase3-core-save-gate';
+
+async function waitForCoreIdleV6089(timeoutMs=12000){
+  const started=Date.now();
+  while(backendV28.syncing && Date.now()-started<timeoutMs){
+    await new Promise(resolve=>setTimeout(resolve,60));
+  }
+  return !backendV28.syncing;
+}
+
 async function syncCoreDeltaV59395(force=false){
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||!backendIsAdminV30())return false;
   // v60.4.26: once a core revision conflict is known, force-save is not allowed
   // to hammer the stale revision. A reload is required first.
   if(backendV28.coreConflict)return false;
   if(demoCloudAutosaveBlockedV60426())return baselineDemoCoreV60426();
-  if(backendV28.syncing){backendV28.syncQueued=true;return false;}
+  if(backendV28.syncing){
+    if(!force){backendV28.syncQueued=true;return false;}
+    const idle=await waitForCoreIdleV6089(12000);
+    if(!idle){
+      backendV28.lastCoreErrorV59395={
+        message:'Another client/setup save is still running. Please try the Schedule change again.',
+        details:'',
+        hint:'',
+        code:'CORE_SAVE_BUSY_V6089',
+        at:new Date().toISOString()
+      };
+      return false;
+    }
+  }
   const delta=coreDeltaV59395();
   if(!delta){
-    // Initial onboarding workspaces are small and still need the original full
-    // writer to establish their first comparison baseline.
+    const managementRoute=typeof managementRoutingRequestedV5936==='function'&&managementRoutingRequestedV5936();
+    if(managementRoute||backendV28.managementCoreHydratingV6089){
+      backendV28.lastCoreErrorV59395={
+        message:'Management client data is still establishing its save baseline. Please try again in a moment.',
+        details:'',
+        hint:'',
+        code:'MANAGEMENT_CORE_BASELINE_V6089',
+        at:new Date().toISOString()
+      };
+      return false;
+    }
+    // Keep the historical full-snapshot bootstrap ONLY for genuine first-time
+    // owner onboarding. An already-loaded Management account must use deltas.
     return syncCoreSnapshotBaseV59395(force);
   }
   if(!delta.hasChanges){
@@ -22000,8 +22061,13 @@ queueCoreSyncV28=function queueCoreSyncV59395(){
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||backendV28.hydrating||!backendIsAdminV30())return;
   if(backendV28.coreConflict)return;
   if(demoCloudAutosaveBlockedV60426()){baselineDemoCoreV60426();return;}
+  if(backendV28.managementCoreHydratingV6089)return;
   const delta=coreDeltaV59395();
-  if(!delta){return queueCoreSyncBaseV30?.();}
+  if(!delta){
+    const managementRoute=typeof managementRoutingRequestedV5936==='function'&&managementRoutingRequestedV5936();
+    if(managementRoute)return;
+    return queueCoreSyncBaseV30?.();
+  }
   if(!delta.hasChanges)return;
   backendV28.coreDirty=true;
   clearTimeout(backendV28.syncTimer);

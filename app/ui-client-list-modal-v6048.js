@@ -1,4 +1,4 @@
-/* TuinBooks v60.4.8.1 — client modal + NEW R basket persistence
+﻿/* TuinBooks v60.4.8.1 â€” client modal + NEW R basket persistence
    - Clients page is browse/search only; the client record never shares the page layout.
    - Full-width responsive client grid with operational status detail.
    - Opening / creating a client uses a separate modal box over the client list.
@@ -69,9 +69,9 @@
     return {label:'Active',kind:'active'};
   }
   function scheduleInfo(client){
-    if(waitingNewR(client))return {label:'NEW R · waiting for placement',kind:'newr'};
+    if(waitingNewR(client))return {label:'NEW R Â· waiting for placement',kind:'newr'};
     const next=nextVisit(client);
-    if(next){const team=teamName(next.teamId);return {label:`Next ${shortDate(next.date)}${team?` · ${team}`:''}`,kind:'scheduled'};}
+    if(next){const team=teamName(next.teamId);return {label:`Next ${shortDate(next.date)}${team?` Â· ${team}`:''}`,kind:'scheduled'};}
     const raw=String(client?.status||'active').toLowerCase();
     if(raw==='active'&&isRecurring(client))return {label:'No future visit',kind:'attention'};
     return {label:'No active schedule',kind:'neutral'};
@@ -81,7 +81,7 @@
     if($('clientListModalStylesV6044'))return;
     const style=document.createElement('style');style.id='clientListModalStylesV6044';
     style.textContent=`
-      /* CLIENTS IS A LIST PAGE — never a split editor. */
+      /* CLIENTS IS A LIST PAGE â€” never a split editor. */
       #view-clients .clients-layout{
         display:block!important;grid-template-columns:1fr!important;gap:0!important;
         height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;
@@ -252,7 +252,7 @@
     portalFormToBody();
     document.body.classList.add('client-record-modal-open-v6042');
     clientForm.setAttribute('role','dialog');clientForm.setAttribute('aria-modal','true');
-    requestAnimationFrame(()=>{clientForm.scrollTop=0;($('clientName')||clientForm.querySelector('input,select,textarea'))?.focus?.({preventScroll:true});});
+    requestAnimationFrame(()=>{clientForm.scrollTop=0;($('clientName')||clientForm.querySelector('input,select,textarea'))?.focus?.({preventScroll:true});refreshPrimaryLabelV6048();});
   }
   function closeModal({restore=true}={}){
     if(!modalOpen&&!document.body.classList.contains('client-record-modal-open-v6042'))return;
@@ -331,7 +331,7 @@
 
   function addModalHint(){
     const heading=form()?.querySelector('.form-heading>div');if(!heading||heading.querySelector('.modal-record-note-v6042'))return;
-    const note=document.createElement('div');note.className='modal-record-note-v6042';note.textContent='Client record · close to return to the client list';heading.appendChild(note);
+    const note=document.createElement('div');note.className='modal-record-note-v6042';note.textContent='Client record Â· close to return to the client list';heading.appendChild(note);
   }
 
   function ensureSubmitMessageV6044(){
@@ -378,8 +378,8 @@
   }
   function selectedClientStatusV6045(){return String($('clientStatus')?.value||'active').toLowerCase()==='active'?'active':'paused';}
   function isNewClientV6048(){return !String($('clientId')?.value||'');}
-  function activatingClientV6045(){return isNewClientV6048()&&selectedClientStatusV6045()==='active';}
-  function primaryLabelV6048(){return isNewClientV6048()?'Review & activate':'Save client';}
+  function activatingClientV6045(){return selectedClientStatusV6045()==='active'&&storedClientStatusV6045()!=='active';}
+  function primaryLabelV6048(){const stored=storedClientStatusV6045(),selected=selectedClientStatusV6045();return selected==='active'&&stored!=='active'?'Review & activate':selected==='paused'&&stored==='active'?'Review & pause':'Save client';}
   function refreshPrimaryLabelV6048(){const button=form()?.querySelector('.form-actions button[data-client-primary-v6045],.form-actions button[type="submit"]');if(button&&!button.disabled)button.textContent=primaryLabelV6048();}
   function fakeClientSubmitEventV6045(clientForm){
     return {preventDefault(){},stopPropagation(){},stopImmediatePropagation(){},target:clientForm,currentTarget:clientForm};
@@ -389,7 +389,7 @@
     const custom=String($('clientCustomTasks')?.value||'').split(/\n+/).map(v=>v.trim()).filter(Boolean).length;
     return {
       name:$('clientName')?.value.trim()||'This client',
-      frequency:$('clientFrequency')?.value||'—',
+      frequency:$('clientFrequency')?.value||'â€”',
       hours:Number($('clientEstimatedHours')?.value||0),
       invoiceFrom:$('clientBillingProfileV59396')?.selectedOptions?.[0]?.textContent?.trim()||'Billing Profile',
       fee:Number($('clientMonthlyFee')?.value||0),
@@ -403,7 +403,7 @@
     dialog.id='clientActivationDialogV6045';dialog.className='dialog';
     const fee=summary.fee>0?`R ${summary.fee.toLocaleString('en-ZA',{maximumFractionDigits:2})}`:'Not set yet';
     dialog.innerHTML=`<div class="dialog-shell">
-      <div class="dialog-heading"><div><span class="eyebrow">New recurring client</span><h2>Activate ${escText(summary.name)}?</h2></div><button type="button" class="icon-button" data-cancel aria-label="Close">×</button></div>
+      <div class="dialog-heading"><div><span class="eyebrow">New recurring client</span><h2>Activate ${escText(summary.name)}?</h2></div><button type="button" class="icon-button" data-cancel aria-label="Close">Ã—</button></div>
       <p>This saves the client as Active and adds a gold <strong>NEW R</strong> item to the Schedule Basket. The first calendar placement sets the recurring team, day and start date.</p>
       <div class="client-activation-summary-v58959">
         <div><span>Frequency</span><strong>${escText(summary.frequency)}</strong></div>
@@ -451,7 +451,7 @@
     const existingId=$('clientId')?.value||'';
     const status=$('clientStatus');
     if(!status)throw new Error('Client status field is unavailable.');
-    submit.disabled=true;submit.textContent='Activating…';
+    submit.disabled=true;submit.textContent='Activatingâ€¦';
     try{
       // Save through every current client wrapper, but temporarily as Paused so the
       // historical activation guards cannot intercept the submit. Then promote the
@@ -602,7 +602,7 @@
   function markBuild(){
     window.__tuinbooksBuild=BUILD;
     const marker=document.querySelector('[id^="tuinbooksBuildV"]');
-    if(marker){marker.id='tuinbooksBuildV60481';marker.textContent='v60.4.8.1';marker.title='Client lifecycle + NEW R basket cloud persistence · frozen Schedule remains v60.3.5';}
+    if(marker){marker.id='tuinbooksBuildV60481';marker.textContent='v60.4.8.1';marker.title='Client lifecycle + NEW R basket cloud persistence Â· frozen Schedule remains v60.3.5';}
   }
 
   function install(){
@@ -622,3 +622,4 @@
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
+

@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.14-cancellation-history-scope';
+window.__TUINBOOKS_RELEASE__='60.8.15-cancellation-atomic-billing';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -28729,3 +28729,407 @@ window.__tuinbooksBuild='60.7.33-schedule-layout-context-repair';
 
 // TuinBooks v60.7.32 — cumulative startup/runtime recovery.
 window.__TUINBOOKS_RELEASE__='60.7.44';
+
+
+/* ==========================================================================
+   TuinBooks v60.8.15 - atomic single-visit cancellation billing authority
+
+   Purpose:
+   - keep the cancellation row and its billing consequence in one save
+   - preserve v60.8.13 hidden cancellation history
+   - clear stale cancellation counters after undo
+   ========================================================================== */
+const TUINBOOKS_CANCELLATION_ATOMIC_BILLING_V60815='60.8.15-cancellation-atomic-billing';
+
+const ensureRoutineControlInvoiceBaseV60815=
+  typeof ensureRoutineControlInvoiceV59660==='function'
+    ? ensureRoutineControlInvoiceV59660
+    : null;
+
+if(ensureRoutineControlInvoiceBaseV60815){
+  ensureRoutineControlInvoiceV59660=function ensureRoutineControlInvoiceV60815(client,month){
+    let changed=ensureRoutineControlInvoiceBaseV60815(client,month);
+
+    const expected=
+      typeof routineExpectedStateV59660==='function'
+        ? routineExpectedStateV59660(client,month)
+        : null;
+
+    if(!expected)return changed;
+
+    const cancelled=expected.resolvedCancellationsV6052||[];
+    const noCharge=expected.noChargeCancellationsV6052?.length||0;
+    const billable=expected.billableCancellationsV6052?.length||0;
+
+    const invoice=(state.invoices||[]).find(row=>
+      String(row.clientId||'')===String(client?.id||'') &&
+      String(row.month||'')===String(month||'') &&
+      row.routineControlDraftV59660===true &&
+      !(typeof routineDraftIssuedV59660==='function'&&routineDraftIssuedV59660(row))
+    );
+
+    if(!invoice)return changed;
+
+    const setCount=(key,value)=>{
+      const next=Number(value||0);
+      if(Number(invoice[key]||0)!==next){
+        invoice[key]=next;
+        changed=true;
+      }
+    };
+
+    setCount('routineCancelledVisitCountV6052',cancelled.length);
+    setCount('routineNoChargeCancellationCountV6052',noCharge);
+    setCount('routineBillableCancellationCountV6052',billable);
+
+    if(cancelled.length){
+      const parts=[];
+      if(billable)parts.push(billable+' cancelled & billable');
+      if(noCharge)parts.push(noCharge+' cancelled with no charge');
+      if(Number(expected.missingCount||0)>0){
+        parts.push(
+          expected.missingCount+
+          ' visit'+(Number(expected.missingCount)===1?'':'s')+
+          ' still unresolved'
+        );
+      }
+
+      const warning=parts.join(' Â· ');
+
+      if(invoice.billingMissingVisitWarningV59383!==warning){
+        invoice.billingMissingVisitWarningV59383=warning;
+        changed=true;
+      }
+
+      if(
+        Number(invoice.billingMissingVisitCountV59383||0)!==
+        Number(expected.missingCount||0)
+      ){
+        invoice.billingMissingVisitCountV59383=
+          Number(expected.missingCount||0);
+        changed=true;
+      }
+    }
+
+    if(changed)invoice.updatedAt=new Date().toISOString();
+    return changed;
+  };
+}
+
+function reconcileScheduleCancellationBillingV60815(job,mode){
+  const client=
+    typeof clientById==='function'
+      ? clientById(job?.clientId)
+      : null;
+
+  const month=String(job?.date||'').slice(0,7);
+
+  if(
+    !client ||
+    !/^[0-9]{4}-[0-9]{2}$/.test(month) ||
+    typeof routineClientV59660!=='function' ||
+    !routineClientV59660(client) ||
+    typeof ensureRoutineControlInvoiceV59660!=='function'
+  ){
+    return {applicable:false};
+  }
+
+  ensureRoutineControlInvoiceV59660(client,month);
+
+  const invoice=(state.invoices||[]).find(row=>
+    String(row.clientId||'')===String(client.id||'') &&
+    String(row.month||'')===month &&
+    row.routineControlDraftV59660===true &&
+    !(typeof routineDraftIssuedV59660==='function'&&routineDraftIssuedV59660(row))
+  );
+
+  if(!invoice)return {applicable:true,invoice:null};
+
+  const billable=Number(invoice.routineBillableCancellationCountV6052||0);
+  const noCharge=Number(invoice.routineNoChargeCancellationCountV6052||0);
+  const noChargeLine=(invoice.lineItems||[]).some(line=>
+    String(line.sourceScheduleJobId||'')===String(job.id||'') &&
+    line.cancellationNoChargeV6052===true
+  );
+
+  if(mode==='charge'&&billable<1){
+    throw new Error(
+      'Atomic cancellation billing failed: billable cancellation evidence is missing.'
+    );
+  }
+
+  if(mode==='no-charge'&&(noCharge<1||!noChargeLine)){
+    throw new Error(
+      'Atomic cancellation billing failed: no-charge cancellation evidence is missing.'
+    );
+  }
+
+  return {
+    applicable:true,
+    invoiceId:invoice.id||'',
+    billable,
+    noCharge,
+    noChargeLine
+  };
+}
+
+window.applyScheduleCancellationV6052=async function(jobId,mode,reason=''){
+  const job=(state.schedules||[]).find(
+    row=>String(row.id)===String(jobId)
+  );
+
+  if(!job)return toast('This visit could not be loaded.','error');
+
+  const status=String(job.status||'scheduled').toLowerCase();
+
+  if(status==='completed'){
+    return toast(
+      'A completed visit cannot be cancelled. Reopen/correct the Work record instead.',
+      'error'
+    );
+  }
+
+  if(!scheduleCancellationRoutineJobV6052(job)){
+    return toast(
+      'This cancellation option is for routine client visits.',
+      'error'
+    );
+  }
+
+  if(String(job.date||'')<localDateISO()){
+    return toast(
+      'Use the missed-visit resolution tools for a past visit.',
+      'error'
+    );
+  }
+
+  if(!['charge','no-charge'].includes(mode))return false;
+
+  const label=
+    mode==='charge'
+      ? 'Cancel visit - charge'
+      : 'Cancel visit - no charge';
+
+  try{window.closeScheduleTransientUiV6085?.();}catch(_){}
+
+  if(typeof window.runScheduleMutationV6084!=='function'){
+    throw new Error('Schedule save authority is unavailable.');
+  }
+
+  const saved=await window.runScheduleMutationV6084(label,()=>{
+    const now=new Date().toISOString();
+    const actor=scheduleCancellationActorV6052();
+
+    if(job.cancellationPreviousStatusV6052===undefined){
+      job.cancellationPreviousStatusV6052=job.status||'scheduled';
+    }
+
+    if(job.cancellationPreviousChargeableV6052===undefined){
+      job.cancellationPreviousChargeableV6052=job.chargeable;
+    }
+
+    job.status='cancelled';
+    job.chargeable=mode==='charge';
+    job.cancellationBillingV6052=mode;
+    job.cancelReason=
+      String(reason||'Client cancelled this visit').trim()||
+      'Client cancelled this visit';
+    job.cancelledAtV6052=now;
+    job.cancelledByV6052=actor;
+    job.updatedAt=now;
+
+    window.rememberHiddenScheduleRowsV60813([job]);
+
+    if(typeof addJobAuditV14==='function'){
+      addJobAuditV14(
+        job,
+        mode==='charge'
+          ? 'Visit cancelled - charge client'
+          : 'Visit cancelled - no charge',
+        job.cancelReason
+      );
+    }
+
+    try{
+      if(typeof auditV56==='function'){
+        auditV56(
+          'schedule_job',
+          job.id,
+          mode==='charge'
+            ? 'cancelled_billable'
+            : 'cancelled_no_charge',
+          {
+            clientId:job.clientId,
+            date:job.date,
+            reason:job.cancelReason
+          }
+        );
+      }
+    }catch(_){}
+
+    reconcileScheduleCancellationBillingV60815(job,mode);
+
+    return {
+      verifySchedule:{
+        rows:[{
+          id:job.id,
+          status:'cancelled'
+        }]
+      }
+    };
+  });
+
+  if(!saved?.ok)return false;
+
+  try{
+    document
+      .getElementById('singleVisitCancelDialogV6052')
+      ?.close();
+  }catch(_){}
+
+  scheduleCancellationRefreshBillingV6052(job);
+
+  try{window.closeScheduleTransientUiV6085?.();}catch(_){}
+
+  if(typeof renderSchedule==='function')renderSchedule();
+
+  toast(
+    mode==='charge'
+      ? 'Visit cancelled. Client remains chargeable.'
+      : 'Visit cancelled. Client will not be charged.'
+  );
+
+  return true;
+};
+
+window.undoScheduleCancellationV6052=async function(jobId){
+  let job=(state.schedules||[]).find(
+    row=>String(row.id)===String(jobId)
+  );
+
+  let fromHistory=false;
+
+  if(!job){
+    job=(state.scheduleHistoryV60813||[]).find(
+      row=>String(row?.id||'')===String(jobId)
+    );
+    fromHistory=!!job;
+  }
+
+  if(!job||!scheduleCancellationIsOursV6052(job)){
+    return toast(
+      'There is no TuinBooks cancellation to undo.',
+      'error'
+    );
+  }
+
+  if(!window.confirm(
+    'Undo this cancellation and restore the visit to the schedule?'
+  )){
+    return false;
+  }
+
+  const saved=await window.runScheduleMutationV6084(
+    'Undo visit cancellation',
+    ()=>{
+      if(fromHistory){
+        job=JSON.parse(JSON.stringify(job));
+        window.removeScheduleHistoryRowV60813(job.id);
+
+        if(
+          !(state.schedules||[]).some(
+            row=>String(row.id)===String(job.id)
+          )
+        ){
+          state.schedules.push(job);
+        }
+      }
+
+      const now=new Date().toISOString();
+      const actor=scheduleCancellationActorV6052();
+
+      job.status=
+        job.cancellationPreviousStatusV6052||
+        'scheduled';
+
+      if(job.cancellationPreviousChargeableV6052===undefined){
+        delete job.chargeable;
+      }else{
+        job.chargeable=job.cancellationPreviousChargeableV6052;
+      }
+
+      delete job.cancellationBillingV6052;
+      delete job.cancelReason;
+      delete job.cancelledAtV6052;
+      delete job.cancelledByV6052;
+      delete job.cancellationPreviousStatusV6052;
+      delete job.cancellationPreviousChargeableV6052;
+
+      job.updatedAt=now;
+
+      window.removeScheduleHistoryRowV60813(job.id);
+
+      if(typeof addJobAuditV14==='function'){
+        addJobAuditV14(
+          job,
+          'Visit cancellation undone',
+          'Restored by '+actor
+        );
+      }
+
+      try{
+        if(typeof auditV56==='function'){
+          auditV56(
+            'schedule_job',
+            job.id,
+            'cancellation_undone',
+            {
+              clientId:job.clientId,
+              date:job.date
+            }
+          );
+        }
+      }catch(_){}
+
+      const client=
+        typeof clientById==='function'
+          ? clientById(job.clientId)
+          : null;
+
+      const month=String(job.date||'').slice(0,7);
+
+      if(
+        client &&
+        /^[0-9]{4}-[0-9]{2}$/.test(month) &&
+        typeof routineClientV59660==='function' &&
+        routineClientV59660(client) &&
+        typeof ensureRoutineControlInvoiceV59660==='function'
+      ){
+        ensureRoutineControlInvoiceV59660(client,month);
+      }
+
+      return {
+        verifySchedule:{
+          rows:[{
+            id:job.id,
+            status:job.status||'scheduled',
+            date:job.date,
+            teamId:job.teamId
+          }]
+        }
+      };
+    }
+  );
+
+  if(!saved?.ok)return false;
+
+  scheduleCancellationRefreshBillingV6052(job);
+
+  if(typeof renderSchedule==='function')renderSchedule();
+
+  toast('Cancellation undone. This visit is scheduled again.');
+  return true;
+};
+
+window.__tuinbooksCancellationAtomicBillingBuild=
+  TUINBOOKS_CANCELLATION_ATOMIC_BILLING_V60815;

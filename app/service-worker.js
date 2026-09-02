@@ -1,8 +1,8 @@
-const CACHE='tuinbooks-v60-8-8-phase3-mobile-runtime';
-const VERSION='60.8.9-phase3-core-save-gate';
+const CACHE='tuinbooks-v60-8-11-t50-assets';
+const VERSION='60.8.11-t50-assets';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
-  './tuinbooks-icon.png',
+  './tuinbooks-icon.png?v=60.8.11-t50-assets',
   './manifest.webmanifest',
   './support-management-ui.css?v=59.6.9-quote-status-acceptance-cleanup',
   './stability-repair-v59694.css?v=60.3.5-exact-v6011-calendar-production',
@@ -13,7 +13,7 @@ const SHELL=[
   './assets/ocr/tesseract.min.js',
   './vendor/supabase.js',
   './supabase-config.js',
-  './app.js?v=60.8.9-phase3-core-save-gate',
+  './app.js?v=60.8.11-t50-assets',
   './demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair',
   './ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup',
   './ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup',
@@ -43,12 +43,12 @@ const SHELL=[
   './release-marker.js?v=60.8.0',
   './',
   './index.html',
-  './mobile.html?v=60.8.9-phase3-core-save-gate',
+  './mobile.html?v=60.8.11-t50-assets',
   './client-login.html',
   './office-activate.html',
   './accept.html',
   './document.html',
-  './tuinbooks-logo.png'
+  './tuinbooks-logo.png?v=60.8.11-t50-assets'
 ];
 async function cacheShell(){
   const cache=await caches.open(CACHE);

@@ -1,5 +1,5 @@
-const CACHE='tuinbooks-v60-8-13-cancellation-history-billing';
-const VERSION='60.8.13-cancellation-history-billing';
+const CACHE='tuinbooks-v60-8-14-cancellation-history-scope';
+const VERSION='60.8.14-cancellation-history-scope';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
   './tuinbooks-icon.png?v=60.8.11-t50-assets',
@@ -13,7 +13,7 @@ const SHELL=[
   './assets/ocr/tesseract.min.js',
   './vendor/supabase.js',
   './supabase-config.js',
-  './app.js?v=60.8.13-cancellation-history-billing',
+  './app.js?v=60.8.14-cancellation-history-scope',
   './demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair',
   './ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup',
   './ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup',

@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.13-cancellation-history-billing';
+window.__TUINBOOKS_RELEASE__='60.8.14-cancellation-history-scope';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -17090,7 +17090,7 @@ function basketStatusV59330(item) {
    ========================================================================== */
 const TUINBOOKS_CANCELLATION_HISTORY_BILLING_V60813='60.8.13-cancellation-history-billing';
 
-function rememberHiddenScheduleRowsV60813(rows){
+window.rememberHiddenScheduleRowsV60813=function(rows){
   const incoming=Array.isArray(rows)?rows:[];
   const activeIds=new Set(
     incoming
@@ -17119,7 +17119,7 @@ function rememberHiddenScheduleRowsV60813(rows){
   return state.scheduleHistoryV60813;
 }
 
-function removeScheduleHistoryRowV60813(jobId){
+window.removeScheduleHistoryRowV60813=function(jobId){
   const id=String(jobId||'');
   state.scheduleHistoryV60813=(state.scheduleHistoryV60813||[])
     .filter(row=>String(row?.id||'')!==id);
@@ -17127,7 +17127,7 @@ function removeScheduleHistoryRowV60813(jobId){
 
 function projectOperationalScheduleV59330() {
   const allScheduleRowsV60813=Array.isArray(state.schedules)?state.schedules:[];
-  rememberHiddenScheduleRowsV60813(allScheduleRowsV60813);
+  window.rememberHiddenScheduleRowsV60813(allScheduleRowsV60813);
   state.schedules = allScheduleRowsV60813.filter(scheduleRowIsOperationalV59330);
 
   state.scheduleBasket = Array.isArray(state.scheduleBasket)
@@ -28424,7 +28424,7 @@ if(document.readyState==='loading'){
 
 
 function scheduleCancellationRefreshBillingV6052(job){
-  if(job&&scheduleCancellationIsOursV6052(job))rememberHiddenScheduleRowsV60813([job]);
+  if(job&&scheduleCancellationIsOursV6052(job))window.rememberHiddenScheduleRowsV60813([job]);
   const client=clientById(job?.clientId),month=String(job?.date||'').slice(0,7);
   if(!client||!/^[0-9]{4}-[0-9]{2}$/.test(month))return;
   try{
@@ -28461,7 +28461,7 @@ window.applyScheduleCancellationV6052=async function(jobId,mode,reason=''){
     job.cancelledAtV6052=now;
     job.cancelledByV6052=actor;
     job.updatedAt=now;
-    rememberHiddenScheduleRowsV60813([job]);
+    window.rememberHiddenScheduleRowsV60813([job]);
     if(typeof addJobAuditV14==='function')addJobAuditV14(job,mode==='charge'?'Visit cancelled â€” charge client':'Visit cancelled â€” no charge',job.cancelReason);
     try{if(typeof auditV56==='function')auditV56('schedule_job',job.id,mode==='charge'?'cancelled_billable':'cancelled_no_charge',{clientId:job.clientId,date:job.date,reason:job.cancelReason});}catch(error){}
     return {verifySchedule:{rows:[{id:job.id,status:'cancelled'}]}};
@@ -28487,7 +28487,7 @@ window.undoScheduleCancellationV6052=async function(jobId){
   const saved=await runScheduleMutationV6084('Undo visit cancellation',()=>{
     if(fromHistory){
       job=JSON.parse(JSON.stringify(job));
-      removeScheduleHistoryRowV60813(job.id);
+      window.removeScheduleHistoryRowV60813(job.id);
       if(!(state.schedules||[]).some(row=>String(row.id)===String(job.id)))state.schedules.push(job);
     }
 
@@ -28502,7 +28502,7 @@ window.undoScheduleCancellationV6052=async function(jobId){
     delete job.cancellationPreviousChargeableV6052;
     job.updatedAt=now;
 
-    removeScheduleHistoryRowV60813(job.id);
+    window.removeScheduleHistoryRowV60813(job.id);
     if(typeof addJobAuditV14==='function')addJobAuditV14(job,'Visit cancellation undone',`Restored by ${actor}`);
     try{if(typeof auditV56==='function')auditV56('schedule_job',job.id,'cancellation_undone',{clientId:job.clientId,date:job.date});}catch(error){}
     return {verifySchedule:{rows:[{id:job.id,status:job.status||'scheduled',date:job.date,teamId:job.teamId}]}};

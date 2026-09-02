@@ -1,5 +1,5 @@
-const CACHE='tuinbooks-v60-8-11-t50-assets';
-const VERSION='60.8.11-t50-assets';
+const CACHE='tuinbooks-v60-8-12-sw-logo-integrity';
+const VERSION='60.8.12-sw-logo-integrity';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
   './tuinbooks-icon.png?v=60.8.11-t50-assets',
@@ -63,6 +63,28 @@ self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url=new URL(event.request.url);
   if(url.origin!==self.location.origin)return;
+  const protectedBrandImage=['/app/logo.png','/app/tuinbooks-logo.png','/app/tuinbooks-icon.png'].includes(url.pathname);
+  if(protectedBrandImage){
+    event.respondWith(
+      fetch(event.request,{cache:'no-store'}).then(response=>{
+        const contentType=(response.headers.get('content-type')||'').toLowerCase();
+        if(!response.ok||!contentType.startsWith('image/')){
+          throw new Error('Invalid branding image response: '+response.status+' '+contentType);
+        }
+        const copy=response.clone();
+        caches.open(CACHE).then(cache=>cache.put(event.request,copy)).catch(()=>{});
+        return response;
+      }).catch(async()=>{
+        const cached=await caches.match(event.request);
+        if(cached){
+          const contentType=(cached.headers.get('content-type')||'').toLowerCase();
+          if(cached.ok&&contentType.startsWith('image/')) return cached;
+        }
+        return Response.error();
+      })
+    );
+    return;
+  }
   const codeOrPage=event.request.mode==='navigate'||/\.(?:html|js|css)$/.test(url.pathname);
   if(codeOrPage){
     event.respondWith(fetch(event.request).then(response=>{

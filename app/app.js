@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.19-demo-explicit-save-fix';
+window.__TUINBOOKS_RELEASE__='60.8.20-demo-durable-user-save';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -21540,7 +21540,7 @@ function quickDocumentErrorV59393(error){
 async function syncQuickDocumentsV59393(force=false){
   if(typeof operationalConflictFrozenV59682==='function'&&operationalConflictFrozenV59682())return false;
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||!backendIsAdminV30())return false;
-  if(!force&&demoCloudAutosaveBlockedV60426())return baselineDemoOperationalV60426();
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(force))return false;
   if(backendV28.quickDocumentSyncingV59393){backendV28.quickDocumentQueuedV59393=true;return !force;}
   const change=documentOnlyChangeV59393();
   if(!change)return false;
@@ -21580,7 +21580,10 @@ async function syncQuickDocumentsV59393(force=false){
 const queueOperationalSyncBaseV59393=queueOperationalSyncV41;
 queueOperationalSyncV41=function queueOperationalSyncV59393(){
   if(backendV28.managementOperationalLoadRequiredV59371&&!backendV28.managementOperationalReadyV59371)return;
-  if(demoCloudAutosaveBlockedV60426()){baselineDemoOperationalV60426();return;}
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(false)){
+    demoBackgroundOperationalSuppressedV60820();
+    return;
+  }
   const change=documentOnlyChangeV59393();
   if(change){
     if(change.none)return;
@@ -21733,7 +21736,6 @@ function assertCloudBillingProfilePayloadV59658(payload,label='cloud save'){
    explicit user saves (force=true) still use the normal controlled RPC path.
    ========================================================= */
 const TUINBOOKS_DEMO_AUTOSAVE_QUARANTINE_V60426='60.4.26-demo-autosave-quarantine';
-const TUINBOOKS_DEMO_EXPLICIT_SAVE_V60819='60.8.19-demo-explicit-save-fix';
 function demoCloudAutosaveBlockedV60426(){
   try{return typeof isTrainingDemoV55==='function'&&isTrainingDemoV55();}catch(_){return false;}
 }
@@ -21753,6 +21755,71 @@ function baselineDemoCoreV60426(){
   if(!backendV28.operationalSyncing)setBackendSyncStateV28('Demo session · cloud autosave off','saved');
   return true;
 }
+
+/* =========================================================
+   TuinBooks v60.8.20 — durable Demo user saves
+   ---------------------------------------------------------
+   Keep automatic Demo normalisation quarantined, but do not let that quarantine
+   swallow a real user edit by advancing the comparison baseline first.
+
+   Before the first trusted user interaction, historical Demo normalisation may
+   still refresh the local baseline without writing to Supabase. Once the user
+   interacts, automatic baseline advancement is permanently disabled for this
+   page session. A short trusted-interaction window allows the existing delta
+   queues to write normally; explicit force=true saves are always allowed.
+   ========================================================= */
+const TUINBOOKS_DEMO_DURABLE_USER_SAVE_V60820='60.8.20-demo-durable-user-save';
+let demoUserInteractedV60820=false;
+let demoUserWriteIntentUntilV60820=0;
+
+function demoMonotonicNowV60820(){
+  try{return Number(performance.now()||0);}catch(_){return 0;}
+}
+function markDemoUserWriteIntentV60820(event){
+  try{
+    if(event&&event.isTrusted!==true)return;
+    if(!demoCloudAutosaveBlockedV60426())return;
+    demoUserInteractedV60820=true;
+    demoUserWriteIntentUntilV60820=demoMonotonicNowV60820()+15000;
+  }catch(_){}
+}
+function demoUserWriteIntentActiveV60820(){
+  return demoUserInteractedV60820&&demoMonotonicNowV60820()<=demoUserWriteIntentUntilV60820;
+}
+function demoNetworkWriteAllowedV60820(force=false){
+  if(!demoCloudAutosaveBlockedV60426())return true;
+  return force===true||demoUserWriteIntentActiveV60820();
+}
+function demoBackgroundCoreSuppressedV60820(){
+  if(!demoCloudAutosaveBlockedV60426())return false;
+  if(!demoUserInteractedV60820)return baselineDemoCoreV60426();
+  backendV28.coreDirty=true;
+  backendV28.syncQueued=false;
+  clearTimeout(backendV28.syncTimer);backendV28.syncTimer=null;
+  if(!backendV28.operationalSyncing)setBackendSyncStateV28('Demo changes waiting to save','pending');
+  return true;
+}
+function demoBackgroundOperationalSuppressedV60820(){
+  if(!demoCloudAutosaveBlockedV60426())return false;
+  if(!demoUserInteractedV60820)return baselineDemoOperationalV60426();
+  backendV28.operationalDirty=true;
+  backendV28.operationalQueued=false;
+  backendV28.quickDocumentQueuedV59393=false;
+  clearTimeout(backendV28.operationalSyncTimer);backendV28.operationalSyncTimer=null;
+  if(!backendV28.syncing)setBackendSyncStateV28('Demo changes waiting to save','pending');
+  return true;
+}
+
+['pointerdown','keydown','change','submit'].forEach(type=>{
+  document.addEventListener(type,markDemoUserWriteIntentV60820,true);
+});
+
+window.__tuinbooksDemoDurableSaveV60820={
+  build:TUINBOOKS_DEMO_DURABLE_USER_SAVE_V60820,
+  userInteracted:()=>demoUserInteractedV60820,
+  intentActive:()=>demoUserWriteIntentActiveV60820(),
+  networkAllowed:(force=false)=>demoNetworkWriteAllowedV60820(force)
+};
 
 /* =========================================================
    TuinBooks v59.6.82 — direct operational conflict freeze
@@ -21817,7 +21884,7 @@ async function syncOperationalDeltaV59394(force=false){
   if(backendV28.managementOperationalLoadRequiredV59371&&!backendV28.managementOperationalReadyV59371)return false;
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||!backendIsAdminV30())return false;
   if(operationalConflictFrozenV59682())return false;
-  if(!force&&demoCloudAutosaveBlockedV60426())return baselineDemoOperationalV60426();
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(force))return false;
   if(backendV28.operationalSyncing){backendV28.operationalQueued=true;return false;}
   const delta=operationalDeltaV59394();
   if(!delta){
@@ -21900,7 +21967,10 @@ async function syncOperationalDeltaV59394(force=false){
 queueOperationalSyncV41=function queueOperationalSyncV59394(){
   if(backendV28.businessWorkbookImportActiveV6054)return;
   if(operationalConflictFrozenV59682())return;
-  if(demoCloudAutosaveBlockedV60426()){baselineDemoOperationalV60426();return;}
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(false)){
+    demoBackgroundOperationalSuppressedV60820();
+    return;
+  }
   if(backendV28.managementOperationalLoadRequiredV59371&&!backendV28.managementOperationalReadyV59371)return;
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||backendV28.operationalHydrating||!backendIsAdminV30())return;
   const delta=operationalDeltaV59394();
@@ -21937,7 +22007,10 @@ function reconcileOperationalSaveStateV59394(){
   // Historical HAR traces showed this focus/startup reconciler was the caller
   // that re-queued a stale Management delta. Never run it after a conflict.
   if(operationalConflictFrozenV59682())return;
-  if(demoCloudAutosaveBlockedV60426()){baselineDemoOperationalV60426();return;}
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(false)){
+    demoBackgroundOperationalSuppressedV60820();
+    return;
+  }
   if(backendV28.mode!=='supabase'||!backendV28.managementOperationalReadyV59371)return;
   const delta=operationalDeltaV59394();
   if(!delta)return;
@@ -22036,7 +22109,7 @@ async function syncCoreDeltaV59395(force=false){
   // v60.4.26: once a core revision conflict is known, force-save is not allowed
   // to hammer the stale revision. A reload is required first.
   if(backendV28.coreConflict)return false;
-  if(!force&&demoCloudAutosaveBlockedV60426())return baselineDemoCoreV60426();
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(force))return false;
   if(backendV28.syncing){
     if(!force){backendV28.syncQueued=true;return false;}
     const idle=await waitForCoreIdleV6089(12000);
@@ -22116,7 +22189,10 @@ queueCoreSyncV28=function queueCoreSyncV59395(){
   if(backendV28.businessWorkbookImportActiveV6054)return;
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||backendV28.hydrating||!backendIsAdminV30())return;
   if(backendV28.coreConflict)return;
-  if(demoCloudAutosaveBlockedV60426()){baselineDemoCoreV60426();return;}
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(false)){
+    demoBackgroundCoreSuppressedV60820();
+    return;
+  }
   if(backendV28.managementCoreHydratingV6089)return;
   const delta=coreDeltaV59395();
   if(!delta){
@@ -22191,7 +22267,10 @@ window.openQuoteContactDialogV58951=function openQuickQuoteContactV59395(id=''){
 function reconcileCoreSaveStateV59395(){
   if(backendV28.mode!=='supabase'||backendV28.hydrating)return;
   if(backendV28.coreConflict)return;
-  if(demoCloudAutosaveBlockedV60426()){baselineDemoCoreV60426();return;}
+  if(demoCloudAutosaveBlockedV60426()&&!demoNetworkWriteAllowedV60820(false)){
+    demoBackgroundCoreSuppressedV60820();
+    return;
+  }
   const delta=coreDeltaV59395();
   if(!delta)return;
   if(delta.hasChanges)queueCoreSyncV28();
@@ -29275,9 +29354,11 @@ scheduleCancellationRefreshBillingV6052=
 window.__tuinbooksCancellationScopeAuditBuild=
   TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817;
 
-window.__tuinbooksDemoExplicitSaveBuild=
-  TUINBOOKS_DEMO_EXPLICIT_SAVE_V60819;
-
 /* Runtime release authority must be last. */
 window.__TUINBOOKS_RELEASE__=
-  TUINBOOKS_DEMO_EXPLICIT_SAVE_V60819;
+  TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817;
+
+
+/* Runtime release authority — TuinBooks v60.8.20 */
+window.__TUINBOOKS_RELEASE__='60.8.20-demo-durable-user-save';
+window.__tuinbooksDemoDurableSaveBuild='60.8.20-demo-durable-user-save';

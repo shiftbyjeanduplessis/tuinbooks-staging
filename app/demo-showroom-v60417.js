@@ -456,15 +456,67 @@
     try{window.renderRecords?.();}catch(_){ }
   }
 
+  const PRESERVE_USER_EDITS_BUILD_V60823='60.8.23-demo-showroom-preserve-user-edits';
+
+  function showroomHasUserEditsV60823(){
+    const s=currentState();
+    if(!s||!isDemo())return false;
+
+    const baselineClientIds=new Set(
+      CLIENT_BLUEPRINTS.map((_,index)=>uid('demo-client',index+1))
+    );
+
+    // Any client outside the built-in showroom blueprint is user/QA data.
+    // Never auto-reset the Demo merely because "today" moved while such data
+    // exists: reset_tuinbooks_training_demo would delete that durable work.
+    const extraClient=(s.clients||[]).some(client=>{
+      const id=String(client?.id||'');
+      return id&&!baselineClientIds.has(id);
+    });
+    if(extraClient)return true;
+
+    // The showroom owns exactly two display teams. Extra teams are also
+    // deliberate user/QA changes and must survive a fresh Demo reopen.
+    if((s.teams||[]).filter(team=>team&&team.active!==false).length>2)return true;
+
+    // Preserve non-showroom operational work too, even if no extra client was
+    // added first. Built-in showroom rows use demo-* identifiers.
+    const userOperational=(s.schedules||[]).some(row=>{
+      const id=String(row?.id||'');
+      return id&&!id.startsWith('demo-');
+    })||(s.quotes||[]).some(row=>{
+      const id=String(row?.id||'');
+      return id&&!id.startsWith('demo-');
+    })||(s.invoices||[]).some(row=>{
+      const id=String(row?.id||'');
+      return id&&!id.startsWith('demo-');
+    });
+
+    return userOperational;
+  }
+
   function showroomBaselineHealthy(){
     const s=currentState();
     if(!s||!isDemo())return false;
     const version=String(s.business?.demoShowroomVersion||'');
+
+    // A current showroom that contains deliberate user/QA changes is healthy
+    // even when the browser date differs from the date used to build the
+    // sample working day. The manual "Restore showroom demo" button remains
+    // the explicit way to discard those changes.
+    if(version===BUILD&&showroomHasUserEditsV60823())return true;
+
     const date=isoLocal();
     const jobs=(s.schedules||[]).filter(job=>String(job?.date||'').slice(0,10)===date&&!['cancelled','canceled','archived','deleted'].includes(String(job?.status||'').toLowerCase()));
     const completed=(s.visits||[]).filter(visit=>String(visit?.date||'').slice(0,10)===date&&String(visit?.outcome||'').toLowerCase().includes('complete'));
     return version===BUILD&&jobs.length>=8&&completed.length>=4;
   }
+
+  window.__tuinbooksDemoShowroomPreserveEditsV60823={
+    build:PRESERVE_USER_EDITS_BUILD_V60823,
+    hasUserEdits:showroomHasUserEditsV60823,
+    healthy:showroomBaselineHealthy
+  };
 
   async function ensureShowroomBaselineOnEntry(){
     if(!adminReady()||showroomBaselineHealthy())return true;

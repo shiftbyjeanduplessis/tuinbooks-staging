@@ -1,5 +1,5 @@
-const CACHE='tuinbooks-v60-8-22-demo-durable-flush-scope-fix';
-const VERSION='60.8.22-demo-durable-flush-scope-fix';
+const CACHE='tuinbooks-v60-8-23-demo-showroom-preserve-user-edits';
+const VERSION='60.8.23-demo-showroom-preserve-user-edits';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
   './tuinbooks-icon.png?v=60.8.11-t50-assets',
@@ -26,7 +26,7 @@ const SHELL=[
   './ui-client-work-v6038.js?v=60.3.8-client-work-polish',
   './ui-client-lifecycle-v6048.js?v=60.4.8-client-lifecycle',
   './ui-client-list-modal-v6048.js?v=60.4.8-client-lifecycle',
-  './demo-showroom-v60417.js?v=60.4.18-demo-direct-workspace',
+  './demo-showroom-v60417.js?v=60.8.23-demo-showroom-preserve-user-edits',
   './demo-live-work-v60422.js?v=60.4.22-demo-live-work-embedded-photos',
   './onboarding-master-import-v60423.js?v=60.4.24-onboarding-import-self-closing-cell-fix',
   './business-needs-attention-v6052.js?v=60.5.5-business-needs-attention-import-link',

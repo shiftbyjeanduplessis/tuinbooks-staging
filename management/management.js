@@ -369,7 +369,14 @@ window.__TUINBOOKS_MANAGEMENT_BUILD='59.6.88-stable-client-open-restore';
     $('accountMembers').innerHTML='';
     renderNotes(notes);
     $('recentActivityList').innerHTML='';
-    if (grant) {
+    // v60.8.18: an active grant row can be metadata-only (id/expiry) and
+    // therefore may not contain the historical per-scope booleans. Only treat
+    // a grant as scope-restricting when the RPC explicitly returned at least
+    // one scope key. The server-side start-session RPC remains authoritative.
+    const grantHasExplicitScopesV60818=!!grant&&[
+      'operational_read','operational_edit','financial_read','financial_edit'
+    ].some(key=>Object.prototype.hasOwnProperty.call(grant,key));
+    if (grantHasExplicitScopesV60818) {
       $('openReadOnlyButton').disabled=!(grant.operational_read||grant.financial_read);
       $('openFullSupportButton').disabled=!(grant.operational_edit||grant.financial_edit);
     } else {
@@ -759,7 +766,10 @@ window.__TUINBOOKS_MANAGEMENT_BUILD='59.6.88-stable-client-open-restore';
     $('sessionNote').value='';
     $('sessionMessage').textContent='';
     const g=state.currentAccount.grant||null;
-    const scopes=g
+    const grantHasExplicitScopesV60818=!!g&&[
+      'operational_read','operational_edit','financial_read','financial_edit'
+    ].some(key=>Object.prototype.hasOwnProperty.call(g,key));
+    const scopes=grantHasExplicitScopesV60818
       ? (mode==='full_support'
         ? [g.operational_edit?'Operations edit':'',g.financial_edit?'Financial edit':''].filter(Boolean)
         : [g.operational_read?'Operations read':'',g.financial_read?'Financial read':''].filter(Boolean))
@@ -1128,4 +1138,5 @@ window.__TUINBOOKS_MANAGEMENT_BUILD='59.6.88-stable-client-open-restore';
 /* v59.6.93 — onboarding access UI only.
    Known-good v59.6.88 Management client-opening/support-session logic preserved. */
 window.__tuinbooksManagementOnboardingAccessV59693='59.6.93-onboarding-access-hardening';
-window.__TUINBOOKS_MANAGEMENT_BUILD='59.6.93-onboarding-access-hardening';
+window.__tuinbooksManagementGrantShapeFixV60818='60.8.18-management-grant-shape-fix';
+window.__TUINBOOKS_MANAGEMENT_BUILD='60.8.18-management-grant-shape-fix';

@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.15-cancellation-atomic-billing';
+window.__TUINBOOKS_RELEASE__='60.8.17-cancellation-billing-scope-audit-fix';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -2439,7 +2439,7 @@ function finalJobStatusV14(job){return ['completed','missed','access-failed','de
 function missingWorkJobsV14(month){
   return state.schedules.filter(job=>isMonth(job.date,month)&&job.date<localDateISO()&&!finalJobStatusV14(job)&&!visitLinkedToJobV14(job)).sort((a,b)=>a.date.localeCompare(b.date)||(Number(a.sort)||0)-(Number(b.sort)||0));
 }
-function addJobAuditV14(job,action,note=''){job.audit=job.audit||[];job.audit.push({at:new Date().toISOString(),actor:'Office',action,note});}
+function addJobAuditV14(job,action,note=''){job.audit=[...(job.audit||[])];job.audit.push({at:new Date().toISOString(),actor:'Office',action,note});}
 window.addJobAuditV14 = addJobAuditV14; // v59.6.91 cross-wrapper scope export
 function renderMissingWorkLogV14(month){
   const section=$('missingWorkLogSection'),host=$('missingWorkLogList'),count=$('missingWorkLogCount');if(!section||!host||!count)return;
@@ -25475,6 +25475,19 @@ window.__tuinbooksRoutineValueSendDateV59665={
 };
 window.__tuinbooksBuild=TUINBOOKS_ROUTINE_VALUE_SENDDATE_V59665;
 
+/* ==========================================================================
+   TuinBooks v60.8.17 - routine billing scope bridge
+   ========================================================================== */
+window.__tuinbooksRoutineBillingBridgeV60817={
+  build:'60.8.17-cancellation-billing-scope-audit-fix',
+  routineClient:(client)=>routineClientV59660(client),
+  expected:(client,month)=>routineExpectedStateV59660(client,month),
+  ensure:(client,month)=>ensureRoutineControlInvoiceV59660(client,month),
+  issued:(invoice)=>routineDraftIssuedV59660(invoice),
+  total:(invoice)=>invoiceTotal(invoice)
+};
+
+
 
 /* ========================================================================== 
    TuinBooks v59.6.66 — routine billing display + review action hardening
@@ -29133,3 +29146,134 @@ window.undoScheduleCancellationV6052=async function(jobId){
 
 window.__tuinbooksCancellationAtomicBillingBuild=
   TUINBOOKS_CANCELLATION_ATOMIC_BILLING_V60815;
+
+
+/* ==========================================================================
+   TuinBooks v60.8.17 - cancellation billing scope + audit isolation
+   ========================================================================== */
+const TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817=
+  '60.8.17-cancellation-billing-scope-audit-fix';
+
+function cancellationRoutineDraftV60817(job,api){
+  const month=String(job?.date||'').slice(0,7);
+  return (state.invoices||[]).find(invoice=>
+    String(invoice?.clientId||'')===String(job?.clientId||'') &&
+    String(invoice?.month||'')===month &&
+    invoice?.routineControlDraftV59660===true &&
+    !(api?.issued&&api.issued(invoice))
+  )||null;
+}
+
+function reconcileCancellationViaExistingBillingV60817(job,mode){
+  const api=window.__tuinbooksRoutineBillingBridgeV60817;
+  if(!api){
+    throw new Error('Routine billing bridge is unavailable.');
+  }
+
+  const client=
+    typeof clientById==='function'
+      ?clientById(job?.clientId)
+      :(state.clients||[]).find(
+        row=>String(row?.id||'')===String(job?.clientId||'')
+      );
+
+  const month=String(job?.date||'').slice(0,7);
+
+  if(!client||!/^[0-9]{4}-[0-9]{2}$/.test(month)){
+    return {applicable:false};
+  }
+
+  if(!api.routineClient(client)){
+    return {applicable:false};
+  }
+
+  const changed=api.ensure(client,month);
+  const invoice=cancellationRoutineDraftV60817(job,api);
+
+  if(!invoice){
+    return {applicable:true,changed,invoice:null};
+  }
+
+  const noCharge=Number(invoice.routineNoChargeCancellationCountV6052||0);
+  const billable=Number(invoice.routineBillableCancellationCountV6052||0);
+
+  const noChargeLine=(invoice.lineItems||[]).find(line=>
+    line?.cancellationNoChargeV6052===true &&
+    String(line?.sourceScheduleJobId||'')===String(job?.id||'')
+  )||null;
+
+  try{
+    invoice.total=Number(api.total(invoice)||0);
+  }catch(_){}
+
+  invoice.updatedAt=new Date().toISOString();
+
+  if(mode==='no-charge'){
+    if(noCharge<1||!noChargeLine||!(Number(noChargeLine.unitPrice||0)<0)){
+      throw new Error(
+        'No-charge cancellation did not create its billing adjustment.'
+      );
+    }
+  }
+
+  if(mode==='charge'){
+    if(billable<1){
+      throw new Error(
+        'Billable cancellation did not remain represented in Billing.'
+      );
+    }
+  }
+
+  return {
+    applicable:true,
+    changed:true,
+    invoiceId:String(invoice.id||''),
+    total:Number(invoice.total||0),
+    noCharge,
+    billable,
+    noChargeValue:Number(noChargeLine?.unitPrice||0)
+  };
+}
+
+reconcileScheduleCancellationBillingV60815=
+  function reconcileScheduleCancellationBillingV60817(job,mode){
+    return reconcileCancellationViaExistingBillingV60817(job,mode);
+  };
+
+scheduleCancellationRefreshBillingV6052=
+  function scheduleCancellationRefreshBillingV60817(job){
+    if(!job)return;
+
+    try{
+      const result=reconcileCancellationViaExistingBillingV60817(
+        job,
+        String(job?.cancellationBillingV6052||'')
+      );
+
+      if(result?.applicable&&typeof save==='function'){
+        save();
+      }
+    }catch(error){
+      console.warn(
+        '[TuinBooks] cancellation billing refresh v60.8.17',
+        error
+      );
+    }
+
+    try{
+      if(
+        typeof renderInvoiceCentre==='function' &&
+        typeof activeView!=='undefined' &&
+        activeView==='invoices'
+      ){
+        renderInvoiceCentre();
+      }
+    }catch(_){}
+  };
+
+window.__tuinbooksCancellationScopeAuditBuild=
+  TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817;
+
+/* Runtime release authority must be last. */
+window.__TUINBOOKS_RELEASE__=
+  TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817;

@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.17-cancellation-billing-scope-audit-fix';
+window.__TUINBOOKS_RELEASE__='60.8.19-demo-explicit-save-fix';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -21540,7 +21540,7 @@ function quickDocumentErrorV59393(error){
 async function syncQuickDocumentsV59393(force=false){
   if(typeof operationalConflictFrozenV59682==='function'&&operationalConflictFrozenV59682())return false;
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||!backendIsAdminV30())return false;
-  if(demoCloudAutosaveBlockedV60426())return baselineDemoOperationalV60426();
+  if(!force&&demoCloudAutosaveBlockedV60426())return baselineDemoOperationalV60426();
   if(backendV28.quickDocumentSyncingV59393){backendV28.quickDocumentQueuedV59393=true;return !force;}
   const change=documentOnlyChangeV59393();
   if(!change)return false;
@@ -21733,6 +21733,7 @@ function assertCloudBillingProfilePayloadV59658(payload,label='cloud save'){
    explicit user saves (force=true) still use the normal controlled RPC path.
    ========================================================= */
 const TUINBOOKS_DEMO_AUTOSAVE_QUARANTINE_V60426='60.4.26-demo-autosave-quarantine';
+const TUINBOOKS_DEMO_EXPLICIT_SAVE_V60819='60.8.19-demo-explicit-save-fix';
 function demoCloudAutosaveBlockedV60426(){
   try{return typeof isTrainingDemoV55==='function'&&isTrainingDemoV55();}catch(_){return false;}
 }
@@ -21816,7 +21817,7 @@ async function syncOperationalDeltaV59394(force=false){
   if(backendV28.managementOperationalLoadRequiredV59371&&!backendV28.managementOperationalReadyV59371)return false;
   if(backendV28.mode!=='supabase'||!backendV28.client||!backendV28.businessId||!backendIsAdminV30())return false;
   if(operationalConflictFrozenV59682())return false;
-  if(demoCloudAutosaveBlockedV60426())return baselineDemoOperationalV60426();
+  if(!force&&demoCloudAutosaveBlockedV60426())return baselineDemoOperationalV60426();
   if(backendV28.operationalSyncing){backendV28.operationalQueued=true;return false;}
   const delta=operationalDeltaV59394();
   if(!delta){
@@ -22035,7 +22036,7 @@ async function syncCoreDeltaV59395(force=false){
   // v60.4.26: once a core revision conflict is known, force-save is not allowed
   // to hammer the stale revision. A reload is required first.
   if(backendV28.coreConflict)return false;
-  if(demoCloudAutosaveBlockedV60426())return baselineDemoCoreV60426();
+  if(!force&&demoCloudAutosaveBlockedV60426())return baselineDemoCoreV60426();
   if(backendV28.syncing){
     if(!force){backendV28.syncQueued=true;return false;}
     const idle=await waitForCoreIdleV6089(12000);
@@ -29274,6 +29275,9 @@ scheduleCancellationRefreshBillingV6052=
 window.__tuinbooksCancellationScopeAuditBuild=
   TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817;
 
+window.__tuinbooksDemoExplicitSaveBuild=
+  TUINBOOKS_DEMO_EXPLICIT_SAVE_V60819;
+
 /* Runtime release authority must be last. */
 window.__TUINBOOKS_RELEASE__=
-  TUINBOOKS_CANCELLATION_SCOPE_AUDIT_V60817;
+  TUINBOOKS_DEMO_EXPLICIT_SAVE_V60819;

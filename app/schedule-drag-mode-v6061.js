@@ -3,13 +3,56 @@
    Owns the visible Drag mode state and synchronises it to the actual cards. */
 (()=>{
   const TUINBOOKS_STAGE1_DRAGMODE_SOURCE_V6085='60.8.5-stage1-qwen-repair';
-  const BUILD='60.7.45-drag-toggle-single-owner';
+  const BUILD='60.8.27-schedule-interaction-source-repair';
+  const TUINBOOKS_SCHEDULE_INTERACTION_SOURCE_V60827='60.8.27-schedule-interaction-source-repair';
   const STORAGE_KEY='tuinbooks.scheduleDragScope.v6061';
   let active=false;               // deliberately OFF after every page reload
   let scope='once';
   let lastToggleAt=0;
   let lastScopeAt=0;
   let syncQueued=false;
+  const legacySelectToggleV60827=window.toggleScheduleSelectModeV59320;
+
+  function disableLegacySelectModeV60827(){
+    try{
+      if(window.scheduleSelectModeV59320===true&&typeof legacySelectToggleV60827==='function'){
+        legacySelectToggleV60827(false);
+      }
+    }catch(_){}
+    try{window.scheduleSelectModeV59320=false;}catch(_){}
+    document.body?.classList.remove('schedule-select-mode-v59320');
+    document.getElementById('scheduleBulkDurationBarV59320')?.remove();
+    document.getElementById('scheduleSelectVisitsBtnV59320')?.remove();
+  }
+
+  // Modern Drag Mode owns multi-selection through the small card tick controls.
+  // The old v59.3.20 full-board selection/lasso mode is retired because clicking
+  // a team-day header could select every card in that day.
+  window.toggleScheduleSelectModeV59320=function retiredScheduleSelectModeV60827(){
+    disableLegacySelectModeV60827();
+    return false;
+  };
+  window.selectScheduleLaneV59320=function retiredLaneSelectV60827(){
+    return false;
+  };
+
+  function scheduleLaneBackgroundClickV60827(event){
+    const lane=event.target?.closest?.('#weeklyScheduleBoard .schedule-day-lane[data-team-id][data-date]');
+    if(!lane)return;
+
+    const interactive=event.target?.closest?.(
+      '[data-job-id],button,a,input,select,textarea,label,'+
+      '.schedule-action-v6010,.schedule-action-v6005,.schedule-action-v6006,'+
+      '.schedule-card-info-v58931,.v59320-select-tick,.schedule-insert-zone-v58930'
+    );
+    if(interactive)return;
+
+    // Empty lane space/header is not an action. It is a drag/drop target only.
+    // Block old inline openScheduleDay/selectScheduleLane handlers.
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }
 
   try{
     const saved=localStorage.getItem(STORAGE_KEY)||localStorage.getItem('tuinbooks.scheduleDragScope.v6059');
@@ -35,6 +78,7 @@
 
   function syncCards(){
     syncQueued=false;
+    disableLegacySelectModeV60827();
     document.body?.classList.toggle('schedule-drag-mode-active-v6059',active);
     document.body?.classList.toggle('schedule-drag-mode-active-v6061',active);
 
@@ -127,6 +171,9 @@
   // document click listener here caused the same click to toggle ON and then
   // immediately toggle OFF on the next task.
 
+  // Team-day background is a drop surface, not a hidden button.
+  document.addEventListener('click',scheduleLaneBackgroundClickV60827,true);
+
   // Hard safety gate: no Schedule card can begin a drag while Drag mode is off.
   document.addEventListener('dragstart',event=>{
     const card=event.target?.closest?.('#view-schedule [ondragstart]');
@@ -157,6 +204,7 @@
 
   function boot(){
     installStyles();
+    disableLegacySelectModeV60827();
     installObserver();
     toggle(false,true);
     refreshChrome();
@@ -165,6 +213,11 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
   else boot();
 
-  window.__tuinbooksScheduleDragModeBuild='60.7.45-drag-toggle-single-owner';
+  window.__tuinbooksScheduleDragModeBuild=BUILD;
+  window.__tuinbooksScheduleInteractionSourceV60827={
+    build:TUINBOOKS_SCHEDULE_INTERACTION_SOURCE_V60827,
+    legacySelectRetired:true,
+    blankLaneClickIsNoop:true
+  };
   window.__tuinbooksBuild=BUILD;
 })();

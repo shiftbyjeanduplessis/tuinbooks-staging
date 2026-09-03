@@ -8,8 +8,8 @@
 */
 (()=>{
   const TUINBOOKS_STAGE1_DRAGBASKET_SOURCE_V6085='60.8.5-stage1-qwen-repair';
-  const BUILD='60.8.26-basket-sticky-source-repair';
-  const TUINBOOKS_BASKET_STICKY_SOURCE_V60826='60.8.26-ui-source-repair';
+  const BUILD='60.8.27-basket-fixed-viewport-source';
+  const TUINBOOKS_BASKET_FIXED_SOURCE_V60827='60.8.27-schedule-interaction-source-repair';
   const MULTI_MIME='application/x-tuinbooks-schedule-job-ids';
   const fallbackSelection=new Set();
   // Standard Schedule basket open/close remains owned by app.js. This module
@@ -239,13 +239,24 @@
     return bottom;
   }
 
-  function syncBasketStickyOffsetV60826(){
+  function syncBasketViewportGeometryV60827(){
     const top=Math.max(10,stickyChromeBottomV60826()+10);
-    document.documentElement.style.setProperty('--v6065-basket-sticky-top',`${top}px`);
+    document.documentElement.style.setProperty('--v6065-basket-fixed-top',`${top}px`);
+
+    const drawer=document.getElementById('scheduleParkingLotV5537');
+    const layout=document.querySelector('#view-schedule .schedule-board-and-parking-v5537');
+    if(!drawer||!layout||!dragModeActive())return;
+
+    const rect=layout.getBoundingClientRect();
+    const width=Math.max(280,Math.min(340,Math.round(window.innerWidth*.25)));
+    const left=Math.max(8,Math.round(rect.left));
+
+    drawer.style.setProperty('--v6065-basket-fixed-left',`${left}px`);
+    drawer.style.setProperty('--v6065-basket-fixed-width',`${width}px`);
   }
 
   function syncMode(){
-    syncBasketStickyOffsetV60826();
+    syncBasketViewportGeometryV60827();
     const active=dragModeActive();
     if(active!==lastActive){
       lastActive=active;
@@ -365,18 +376,18 @@
         flex-direction:column!important;
         grid-column:1!important;
         grid-row:1!important;
-        position:sticky!important;
+        position:fixed!important;
         align-self:start!important;
-        left:auto!important;
+        left:var(--v6065-basket-fixed-left,8px)!important;
         right:auto!important;
-        top:var(--v6065-basket-sticky-top,10px)!important;
+        top:var(--v6065-basket-fixed-top,10px)!important;
         bottom:auto!important;
-        width:100%!important;
-        min-width:0!important;
-        max-width:none!important;
-        height:calc(100vh - var(--v6065-basket-sticky-top,10px) - 10px)!important;
+        width:var(--v6065-basket-fixed-width,var(--v6065-basket-width))!important;
+        min-width:280px!important;
+        max-width:340px!important;
+        height:calc(100vh - var(--v6065-basket-fixed-top,10px) - 10px)!important;
         min-height:0!important;
-        max-height:calc(100vh - var(--v6065-basket-sticky-top,10px) - 10px)!important;
+        max-height:calc(100vh - var(--v6065-basket-fixed-top,10px) - 10px)!important;
         transform:none!important;
         margin:0!important;
         padding:0!important;
@@ -638,6 +649,14 @@
           grid-template-columns:minmax(0,1fr)!important;
         }
         body.schedule-drag-mode-active-v6061 #scheduleParkingLotV5537.schedule-basket-panel-v58930.floating-v58931:not(.hidden){
+          position:relative!important;
+          left:auto!important;
+          top:auto!important;
+          width:100%!important;
+          min-width:0!important;
+          max-width:none!important;
+          height:auto!important;
+          max-height:65vh!important;
           grid-column:1!important;
           grid-row:1!important;
           position:relative!important;
@@ -752,7 +771,8 @@
     document.addEventListener('dragstart',onDragStart,true);
     document.addEventListener('drop',onDropCapture,true);
     window.addEventListener('resize',queueSync,{passive:true});
-    syncBasketStickyOffsetV60826();
+    window.addEventListener('scroll',queueSync,{passive:true});
+    syncBasketViewportGeometryV60827();
     lastActive=false;
     queueSync();
   }
@@ -763,9 +783,14 @@
   window.moveSelectedScheduleJobsToBasketV6065=()=>moveIdsToBasket([...selectedSet()]);
   window.clearScheduleDragSelectionV6065=()=>clearSelection({quiet:true});
   window.__tuinbooksScheduleDragBasketBuild=BUILD;
-  window.__tuinbooksBasketStickySourceV60826={
-    build:TUINBOOKS_BASKET_STICKY_SOURCE_V60826,
-    stickyTop:()=>stickyChromeBottomV60826()+10
+  window.__tuinbooksBasketFixedSourceV60827={
+    build:TUINBOOKS_BASKET_FIXED_SOURCE_V60827,
+    sync:syncBasketViewportGeometryV60827,
+    geometry:()=>{
+      const drawer=document.getElementById('scheduleParkingLotV5537');
+      const r=drawer?.getBoundingClientRect?.();
+      return r?{top:r.top,left:r.left,width:r.width,height:r.height,bottom:r.bottom,viewport:window.innerHeight}:null;
+    }
   };
   window.__tuinbooksBuild=BUILD;
 })();

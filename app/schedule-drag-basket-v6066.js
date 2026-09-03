@@ -8,8 +8,8 @@
 */
 (()=>{
   const TUINBOOKS_STAGE1_DRAGBASKET_SOURCE_V6085='60.8.5-stage1-qwen-repair';
-  const BUILD='60.8.27-basket-fixed-viewport-source';
-  const TUINBOOKS_BASKET_FIXED_SOURCE_V60827='60.8.27-schedule-interaction-source-repair';
+  const BUILD='60.8.28-schedule-ui-stability-repair';
+  const TUINBOOKS_BASKET_FIXED_SOURCE_V60827='60.8.28-schedule-ui-stability-repair';
   const MULTI_MIME='application/x-tuinbooks-schedule-job-ids';
   const fallbackSelection=new Set();
   // Standard Schedule basket open/close remains owned by app.js. This module
@@ -186,7 +186,7 @@
     });
   }
 
-  function moveIdsToBasket(ids){
+  async function moveIdsToBasket(ids){
     if(!dragModeActive())return false;
     const targets=selectedMovableIds(ids);
     if(!targets.length){toastSafe('Select at least one movable booking.','error');return false;}
@@ -194,19 +194,11 @@
 
     let moved=0;
     let failed=0;
-    const originalToast=window.toast;
-    try{
-      // Existing single-item move owns all lifecycle rules. Silence its per-item
-      // confirmations so a 20-booking batch produces one useful message instead.
-      if(typeof originalToast==='function')window.toast=()=>{};
-      for(const id of targets){
-        try{
-          const ok=window.moveScheduleJobToBasketV58931?.(id);
-          if(ok)moved++;else failed++;
-        }catch(error){console.error(error);failed++;}
-      }
-    }finally{
-      if(typeof originalToast==='function')window.toast=originalToast;
+    for(const id of targets){
+      try{
+        const ok=await window.moveScheduleJobToBasketV58931?.(id);
+        if(ok)moved++;else failed++;
+      }catch(error){console.error(error);failed++;}
     }
 
     selectedSet().clear();
@@ -215,7 +207,7 @@
     queueSync();
 
     if(moved){
-      const suffix=failed?` ${failed} could not be moved.`:'';
+      const suffix=failed?` ${failed} booking${failed===1?'':'s'} stayed on the board.`:'';
       toastSafe(`${moved} booking${moved===1?'':'s'} moved to the Schedule basket.${suffix}`,failed?'error':'');
       return true;
     }
@@ -223,7 +215,7 @@
     return false;
   }
 
-  function stickyChromeBottomV60826(){
+  function stickyChromeBottomV60828(){
     let bottom=0;
     const nodes=[
       document.querySelector('#managementModeBannerV5936,#managementModeBannerV5935'),
@@ -239,8 +231,26 @@
     return bottom;
   }
 
-  function syncBasketViewportGeometryV60827(){
-    const top=Math.max(10,stickyChromeBottomV60826()+10);
+  function scheduleWorkspaceTopV60828(){
+    let bottom=stickyChromeBottomV60828();
+    const nodes=[
+      document.querySelector('#view-schedule #rollingScheduleOverview.rolling-plan-frozen-v58949'),
+      document.getElementById('rollingScheduleOverview'),
+      document.getElementById('scheduleOperationsToolbarV6005')
+    ];
+    nodes.forEach(node=>{
+      if(!node)return;
+      const style=getComputedStyle(node);
+      if(style.display==='none'||style.visibility==='hidden')return;
+      const rect=node.getBoundingClientRect();
+      if(rect.width<=0||rect.height<=0||rect.bottom<=0)return;
+      if(rect.top<Math.max(220,bottom+80))bottom=Math.max(bottom,Math.ceil(rect.bottom));
+    });
+    return bottom;
+  }
+
+  function syncBasketViewportGeometryV60828(){
+    const top=Math.max(10,scheduleWorkspaceTopV60828()+10);
     document.documentElement.style.setProperty('--v6065-basket-fixed-top',`${top}px`);
 
     const drawer=document.getElementById('scheduleParkingLotV5537');
@@ -256,7 +266,7 @@
   }
 
   function syncMode(){
-    syncBasketViewportGeometryV60827();
+    syncBasketViewportGeometryV60828();
     const active=dragModeActive();
     if(active!==lastActive){
       lastActive=active;
@@ -738,7 +748,7 @@
     }catch(_){ }
   }
 
-  function onDropCapture(event){
+  async function onDropCapture(event){
     if(!dragModeActive())return;
     const basket=event.target?.closest?.('#scheduleParkingLotV5537');
     if(!basket)return;
@@ -749,7 +759,7 @@
     event.stopPropagation();
     event.stopImmediatePropagation();
     basket.classList.remove('is-drop-target');
-    moveIdsToBasket(ids);
+    await moveIdsToBasket(ids);
   }
 
   function installObserver(){
@@ -772,7 +782,7 @@
     document.addEventListener('drop',onDropCapture,true);
     window.addEventListener('resize',queueSync,{passive:true});
     window.addEventListener('scroll',queueSync,{passive:true});
-    syncBasketViewportGeometryV60827();
+    syncBasketViewportGeometryV60828();
     lastActive=false;
     queueSync();
   }
@@ -783,9 +793,9 @@
   window.moveSelectedScheduleJobsToBasketV6065=()=>moveIdsToBasket([...selectedSet()]);
   window.clearScheduleDragSelectionV6065=()=>clearSelection({quiet:true});
   window.__tuinbooksScheduleDragBasketBuild=BUILD;
-  window.__tuinbooksBasketFixedSourceV60827={
+  window.__tuinbooksBasketFixedSourceV60828={
     build:TUINBOOKS_BASKET_FIXED_SOURCE_V60827,
-    sync:syncBasketViewportGeometryV60827,
+    sync:syncBasketViewportGeometryV60828,
     geometry:()=>{
       const drawer=document.getElementById('scheduleParkingLotV5537');
       const r=drawer?.getBoundingClientRect?.();

@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const BUILD = '60.5.22-field-work-hotfix';
-  const TUINBOOKS_VISIT_PANEL_SOURCE_V60826 = '60.8.26-ui-source-repair';
+  const BUILD = '60.8.28-schedule-ui-stability-repair';
+  const TUINBOOKS_VISIT_PANEL_SOURCE_V60826 = '60.8.28-schedule-ui-stability-repair';
   if (window.__tuinbooksVisitControlsV60513 === BUILD) return;
   window.__tuinbooksVisitControlsV60513 = BUILD;
 
@@ -285,7 +285,58 @@
     return true;
   }
 
+  function visitPanelStickyTopV60828() {
+    let bottom = 0;
+    [
+      document.querySelector('#managementModeBannerV5936,#managementModeBannerV5935'),
+      document.querySelector('.admin-header')
+    ].forEach(node => {
+      if (!node) return;
+      const style = getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden') return;
+      const rect = node.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && rect.bottom > 0) bottom = Math.max(bottom, Math.ceil(rect.bottom));
+    });
+    return Math.max(8, bottom + 8);
+  }
+
+  function syncVisitPanelViewportV60828() {
+    const panel = document.getElementById('scheduleDetailPanel');
+    if (!panel) return;
+    const top = visitPanelStickyTopV60828();
+    document.documentElement.style.setProperty('--tb-visit-panel-top-v60828', `${top}px`);
+    try { panel.style.setProperty('top', `${top}px`, 'important'); } catch (_) { panel.style.top = `${top}px`; }
+    try { panel.style.setProperty('max-height', `calc(100vh - ${top}px - 10px)`, 'important'); } catch (_) { panel.style.maxHeight = `calc(100vh - ${top}px - 10px)`; }
+    try { panel.style.setProperty('z-index', '1210', 'important'); } catch (_) {}
+    const head = panel.querySelector('.schedule-detail-head');
+    if (head) {
+      try { head.style.setProperty('position', 'sticky', 'important'); } catch (_) {}
+      try { head.style.setProperty('top', '0', 'important'); } catch (_) {}
+      try { head.style.setProperty('z-index', '4', 'important'); } catch (_) {}
+      try { head.style.setProperty('background', '#fff', 'important'); } catch (_) {}
+    }
+  }
+
+  function installVisitPanelViewportRepairV60828() {
+    if (window.__tuinbooksVisitPanelViewportRepairV60828) return true;
+    if (!document.getElementById('visitPanelViewportRepairV60828')) {
+      const style = document.createElement('style');
+      style.id = 'visitPanelViewportRepairV60828';
+      style.textContent = `#scheduleDetailPanel{top:var(--tb-visit-panel-top-v60828,112px)!important;max-height:calc(100vh - var(--tb-visit-panel-top-v60828,112px) - 10px)!important;z-index:1210!important;}#scheduleDetailPanel .schedule-detail-head{position:sticky!important;top:0!important;z-index:4!important;background:#fff!important;}`;
+      document.head.appendChild(style);
+    }
+    const queued = () => requestAnimationFrame(syncVisitPanelViewportV60828);
+    window.addEventListener('resize', queued, { passive: true });
+    window.addEventListener('scroll', queued, { passive: true });
+    const observer = new MutationObserver(queued);
+    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    window.__tuinbooksVisitPanelViewportRepairV60828 = { build: TUINBOOKS_VISIT_PANEL_SOURCE_V60826, sync: syncVisitPanelViewportV60828 };
+    queued();
+    return true;
+  }
+
   function installVisitPanelTopResetV60512() {
+    installVisitPanelViewportRepairV60828();
     if (window.__tuinbooksVisitPanelTopResetV60512) return true;
     if (typeof window.openScheduleJobV55 !== 'function') return false;
     const base = window.openScheduleJobV55;
@@ -296,6 +347,7 @@
         const content = document.getElementById('scheduleDetailContent');
         if (panel) panel.scrollTop = 0;
         if (content) content.scrollTop = 0;
+        syncVisitPanelViewportV60828();
       });
       return result;
     };
@@ -315,8 +367,10 @@
     window.__tuinbooksVisitPanelTopResetV60512 = true;
     window.__tuinbooksVisitPanelSourceV60826 = {
       build: TUINBOOKS_VISIT_PANEL_SOURCE_V60826,
-      managementOffset: () => getComputedStyle(document.documentElement).getPropertyValue('--tb-management-banner-h').trim()
+      managementOffset: () => getComputedStyle(document.documentElement).getPropertyValue('--tb-management-banner-h').trim(),
+      viewportTop: visitPanelStickyTopV60828
     };
+    requestAnimationFrame(syncVisitPanelViewportV60828);
     return true;
   }
 

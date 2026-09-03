@@ -3,8 +3,8 @@
    Owns the visible Drag mode state and synchronises it to the actual cards. */
 (()=>{
   const TUINBOOKS_STAGE1_DRAGMODE_SOURCE_V6085='60.8.5-stage1-qwen-repair';
-  const BUILD='60.8.27-schedule-interaction-source-repair';
-  const TUINBOOKS_SCHEDULE_INTERACTION_SOURCE_V60827='60.8.27-schedule-interaction-source-repair';
+  const BUILD='60.8.28-schedule-ui-stability-repair';
+  const TUINBOOKS_SCHEDULE_INTERACTION_SOURCE_V60827='60.8.28-schedule-ui-stability-repair';
   const STORAGE_KEY='tuinbooks.scheduleDragScope.v6061';
   let active=false;               // deliberately OFF after every page reload
   let scope='once';
@@ -36,9 +36,14 @@
     return false;
   };
 
-  function scheduleLaneBackgroundClickV60827(event){
-    const lane=event.target?.closest?.('#weeklyScheduleBoard .schedule-day-lane[data-team-id][data-date]');
-    if(!lane)return;
+  function scheduleBoardBackgroundActionGuardV60828(event){
+    if(!modeActive())return;
+    const surface=event.target?.closest?.(
+      '#weeklyScheduleBoard .schedule-day-lane[data-team-id][data-date],'+
+      '#weeklyScheduleBoard .schedule-lane-head,'+
+      '#weeklyScheduleBoard .calendar-team-day[onclick]'
+    );
+    if(!surface)return;
 
     const interactive=event.target?.closest?.(
       '[data-job-id],button,a,input,select,textarea,label,'+
@@ -47,11 +52,14 @@
     );
     if(interactive)return;
 
-    // Empty lane space/header is not an action. It is a drag/drop target only.
-    // Block old inline openScheduleDay/selectScheduleLane handlers.
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+  }
+
+  function scheduleBoardBackgroundKeyGuardV60828(event){
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    scheduleBoardBackgroundActionGuardV60828(event);
   }
 
   try{
@@ -172,7 +180,9 @@
   // immediately toggle OFF on the next task.
 
   // Team-day background is a drop surface, not a hidden button.
-  document.addEventListener('click',scheduleLaneBackgroundClickV60827,true);
+  document.addEventListener('pointerdown',scheduleBoardBackgroundActionGuardV60828,true);
+  document.addEventListener('click',scheduleBoardBackgroundActionGuardV60828,true);
+  document.addEventListener('keydown',scheduleBoardBackgroundKeyGuardV60828,true);
 
   // Hard safety gate: no Schedule card can begin a drag while Drag mode is off.
   document.addEventListener('dragstart',event=>{
@@ -217,7 +227,8 @@
   window.__tuinbooksScheduleInteractionSourceV60827={
     build:TUINBOOKS_SCHEDULE_INTERACTION_SOURCE_V60827,
     legacySelectRetired:true,
-    blankLaneClickIsNoop:true
+    blankLaneClickIsNoop:true,
+    blankLanePointerIsNoop:true
   };
   window.__tuinbooksBuild=BUILD;
 })();

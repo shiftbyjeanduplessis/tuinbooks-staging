@@ -2,6 +2,7 @@
   'use strict';
 
   const BUILD = '60.5.22-field-work-hotfix';
+  const TUINBOOKS_VISIT_PANEL_SOURCE_V60826 = '60.8.26-ui-source-repair';
   if (window.__tuinbooksVisitControlsV60513 === BUILD) return;
   window.__tuinbooksVisitControlsV60513 = BUILD;
 
@@ -298,7 +299,24 @@
       });
       return result;
     };
+    if (!window.__tuinbooksVisitPanelEscapeV60826) {
+      window.__tuinbooksVisitPanelEscapeV60826 = true;
+      document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const panel = document.getElementById('scheduleDetailPanel');
+        if (!panel || panel.classList.contains('hidden')) return;
+        if (document.querySelector('dialog[open]')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        try { window.closeScheduleDetailV23?.(); }
+        catch (_) { panel.classList.add('hidden'); }
+      }, true);
+    }
     window.__tuinbooksVisitPanelTopResetV60512 = true;
+    window.__tuinbooksVisitPanelSourceV60826 = {
+      build: TUINBOOKS_VISIT_PANEL_SOURCE_V60826,
+      managementOffset: () => getComputedStyle(document.documentElement).getPropertyValue('--tb-management-banner-h').trim()
+    };
     return true;
   }
 
@@ -863,13 +881,20 @@
         z-index:2147482400!important;pointer-events:auto!important
       }
       .schedule-control-room.detail-open .schedule-detail-panel.job-workspace-v551{
-        position:fixed!important;top:12px!important;right:12px!important;bottom:12px!important;left:auto!important;
+        position:fixed!important;
+        top:calc(var(--tb-management-banner-h,0px) + 12px)!important;
+        right:12px!important;bottom:12px!important;left:auto!important;
         transform:none!important;width:min(720px,calc(100vw - 24px))!important;height:auto!important;
-        max-height:calc(100vh - 24px)!important;overflow:hidden!important;z-index:2147482401!important;
+        max-height:calc(100vh - var(--tb-management-banner-h,0px) - 24px)!important;
+        overflow:hidden!important;z-index:2147482401!important;
         border-radius:18px!important;background:#fff!important;box-shadow:0 24px 90px rgba(0,0,0,.34)!important
       }
       .schedule-control-room.detail-open .schedule-detail-panel.job-workspace-v551 .schedule-detail-head{
         position:sticky!important;top:0!important;z-index:5!important;background:#fff!important
+      }
+      .schedule-control-room.detail-open .schedule-detail-panel.job-workspace-v551 #closeScheduleDetail{
+        display:grid!important;visibility:visible!important;opacity:1!important;
+        flex:0 0 auto!important;position:relative!important;z-index:6!important
       }
       .schedule-control-room.detail-open .schedule-detail-panel.job-workspace-v551 .schedule-detail-content{
         height:calc(100% - 70px)!important;overflow:auto!important
@@ -923,7 +948,11 @@
 
       @media(max-width:700px){
         .visit-controls-actions-v6054{width:100%}.visit-controls-actions-v6054 .button{flex:1 1 100%}
-        .schedule-control-room.detail-open .schedule-detail-panel.job-workspace-v551{top:0!important;right:0!important;bottom:0!important;left:0!important;width:100vw!important;max-height:100vh!important;border-radius:0!important}
+        .schedule-control-room.detail-open .schedule-detail-panel.job-workspace-v551{
+          top:var(--tb-management-banner-h,0px)!important;right:0!important;bottom:0!important;left:0!important;
+          width:100vw!important;height:calc(100vh - var(--tb-management-banner-h,0px))!important;
+          max-height:calc(100vh - var(--tb-management-banner-h,0px))!important;border-radius:0!important
+        }
       }
     `;
     document.head.appendChild(style);
@@ -967,6 +996,7 @@
     syncManagementOffsetV60517();
     setTimeout(syncManagementOffsetV60517,250);
     setTimeout(syncManagementOffsetV60517,1200);
+    window.addEventListener('resize',syncManagementOffsetV60517,{passive:true});
     installScheduleDetailWrapper();
     installClientWorkConfirmationV60512();
     installVisitPanelTopResetV60512();

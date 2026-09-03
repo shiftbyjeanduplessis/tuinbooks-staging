@@ -1,5 +1,5 @@
-const CACHE='tuinbooks-v60-8-24-demo-showroom-hydration-gate';
-const VERSION='60.8.24-demo-showroom-hydration-gate';
+const CACHE='tuinbooks-v60-8-26-ui-source-repair';
+const VERSION='60.8.26-ui-source-repair';
 const SHELL=[
   './styles.css?v=59.6.89-support-route-restore',
   './tuinbooks-icon.png?v=60.8.11-t50-assets',
@@ -31,9 +31,9 @@ const SHELL=[
   './onboarding-master-import-v60423.js?v=60.4.24-onboarding-import-self-closing-cell-fix',
   './business-needs-attention-v6052.js?v=60.5.5-business-needs-attention-import-link',
   './mobile-profiles-v60430.js?v=60.4.30',
-  './visit-controls-v60521.js?v=60.8.6-stage2-direct-source',
+  './visit-controls-v60521.js?v=60.8.26-ui-source-repair',
   './schedule-drag-mode-v6061.js?v=60.7.45-drag-toggle-single-owner',
-  './schedule-drag-basket-v6066.js?v=60.7.46-long-sticky-basket',
+  './schedule-drag-basket-v6066.js?v=60.8.26-ui-source-repair',
   './business-data-export-v6072.js?v=60.7.5-cumulative-export-schedule-fix',
   './ui-basket-cleanup-v6039.js?v=60.8.0-schedule-v2-guard',
   './schedule-v2/schedule-v2.css?v=60.8.0',
@@ -48,7 +48,7 @@ const SHELL=[
   './office-activate.html',
   './accept.html',
   './document.html',
-  './tuinbooks-logo.png?v=60.8.11-t50-assets'
+  './tuinbooks-logo.png?v=60.8.26-ui-source-repair'
 ];
 async function cacheShell(){
   const cache=await caches.open(CACHE);
@@ -75,7 +75,9 @@ self.addEventListener('fetch',event=>{
         caches.open(CACHE).then(cache=>cache.put(event.request,copy)).catch(()=>{});
         return response;
       }).catch(async()=>{
-        const cached=await caches.match(event.request);
+        const cached=
+          await caches.match(event.request) ||
+          await caches.match(event.request,{ignoreSearch:true});
         if(cached){
           const contentType=(cached.headers.get('content-type')||'').toLowerCase();
           if(cached.ok&&contentType.startsWith('image/')) return cached;

@@ -8,7 +8,8 @@
 */
 (()=>{
   const TUINBOOKS_STAGE1_DRAGBASKET_SOURCE_V6085='60.8.5-stage1-qwen-repair';
-  const BUILD='60.7.46-long-sticky-basket';
+  const BUILD='60.8.26-basket-sticky-source-repair';
+  const TUINBOOKS_BASKET_STICKY_SOURCE_V60826='60.8.26-ui-source-repair';
   const MULTI_MIME='application/x-tuinbooks-schedule-job-ids';
   const fallbackSelection=new Set();
   // Standard Schedule basket open/close remains owned by app.js. This module
@@ -222,7 +223,29 @@
     return false;
   }
 
+  function stickyChromeBottomV60826(){
+    let bottom=0;
+    const nodes=[
+      document.querySelector('#managementModeBannerV5936,#managementModeBannerV5935'),
+      document.querySelector('.admin-header')
+    ];
+    nodes.forEach(node=>{
+      if(!node)return;
+      const style=getComputedStyle(node);
+      if(style.display==='none'||style.visibility==='hidden')return;
+      const rect=node.getBoundingClientRect();
+      if(rect.width>0&&rect.height>0&&rect.bottom>0)bottom=Math.max(bottom,Math.ceil(rect.bottom));
+    });
+    return bottom;
+  }
+
+  function syncBasketStickyOffsetV60826(){
+    const top=Math.max(10,stickyChromeBottomV60826()+10);
+    document.documentElement.style.setProperty('--v6065-basket-sticky-top',`${top}px`);
+  }
+
   function syncMode(){
+    syncBasketStickyOffsetV60826();
     const active=dragModeActive();
     if(active!==lastActive){
       lastActive=active;
@@ -346,14 +369,14 @@
         align-self:start!important;
         left:auto!important;
         right:auto!important;
-        top:10px!important;
+        top:var(--v6065-basket-sticky-top,10px)!important;
         bottom:auto!important;
         width:100%!important;
         min-width:0!important;
         max-width:none!important;
-        height:calc(100vh - 20px)!important;
-        min-height:520px!important;
-        max-height:calc(100vh - 20px)!important;
+        height:calc(100vh - var(--v6065-basket-sticky-top,10px) - 10px)!important;
+        min-height:0!important;
+        max-height:calc(100vh - var(--v6065-basket-sticky-top,10px) - 10px)!important;
         transform:none!important;
         margin:0!important;
         padding:0!important;
@@ -728,6 +751,8 @@
     document.addEventListener('pointerdown',onPointerDown,true);
     document.addEventListener('dragstart',onDragStart,true);
     document.addEventListener('drop',onDropCapture,true);
+    window.addEventListener('resize',queueSync,{passive:true});
+    syncBasketStickyOffsetV60826();
     lastActive=false;
     queueSync();
   }
@@ -738,5 +763,9 @@
   window.moveSelectedScheduleJobsToBasketV6065=()=>moveIdsToBasket([...selectedSet()]);
   window.clearScheduleDragSelectionV6065=()=>clearSelection({quiet:true});
   window.__tuinbooksScheduleDragBasketBuild=BUILD;
+  window.__tuinbooksBasketStickySourceV60826={
+    build:TUINBOOKS_BASKET_STICKY_SOURCE_V60826,
+    stickyTop:()=>stickyChromeBottomV60826()+10
+  };
   window.__tuinbooksBuild=BUILD;
 })();

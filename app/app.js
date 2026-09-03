@@ -2,7 +2,7 @@
 'use strict';
 // TuinBooks production release marker — deliberately separate from the legacy
 // __tuinbooksBuild chain, which older feature layers overwrite independently.
-window.__TUINBOOKS_RELEASE__='60.8.20-demo-durable-user-save';
+window.__TUINBOOKS_RELEASE__='60.8.21-demo-durable-flush';
 console.info('[TuinBooks release 60.7.44] Basket + Drag repair loaded');
 
 
@@ -29362,3 +29362,152 @@ window.__TUINBOOKS_RELEASE__=
 /* Runtime release authority — TuinBooks v60.8.20 */
 window.__TUINBOOKS_RELEASE__='60.8.20-demo-durable-user-save';
 window.__tuinbooksDemoDurableSaveBuild='60.8.20-demo-durable-user-save';
+
+
+/* ==========================================================================
+   TuinBooks v60.8.21 — durable Demo flush after real user edits
+   --------------------------------------------------------------------------
+   v60.8.20 stopped the Demo quarantine from swallowing a user delta, but the
+   normal save() path still depended on background debounce timers. In the
+   disposable Training Demo this meant a real Add Client action could exist in
+   browser state and still disappear after a fresh Management -> Demo reopen.
+
+   This layer keeps the pre-interaction Demo quarantine intact. After the user
+   has genuinely interacted with the Demo, save() schedules one debounced,
+   explicit force-save of any ACTUAL pending core/operational deltas. No delta
+   means no network request. This gives the Demo the same durable user-action
+   semantics as a normal customer workspace without re-enabling startup
+   autosave loops.
+   ========================================================================== */
+const TUINBOOKS_DEMO_DURABLE_FLUSH_V60821='60.8.21-demo-durable-flush';
+const saveBeforeV60821=save;
+let demoDurableFlushTimerV60821=null;
+let demoDurableFlushRunningV60821=false;
+let demoDurableFlushQueuedV60821=false;
+let demoDurableFlushLastV60821={
+  at:'',
+  reason:'',
+  corePending:false,
+  operationalPending:false,
+  coreOk:true,
+  operationalOk:true,
+  error:''
+};
+
+function demoDurableCorePendingV60821(){
+  try{return coreDeltaV59395()?.hasChanges===true;}catch(_){return false;}
+}
+function demoDurableOperationalPendingV60821(){
+  try{return operationalDeltaV59394()?.hasChanges===true;}catch(_){return false;}
+}
+function demoDurableFlushEligibleV60821(){
+  return Boolean(
+    demoCloudAutosaveBlockedV60426() &&
+    demoUserInteractedV60820===true &&
+    backendV28.mode==='supabase' &&
+    backendV28.client &&
+    backendV28.businessId &&
+    backendIsAdminV30() &&
+    !backendV28.hydrating &&
+    !backendV28.managementCoreHydratingV6089
+  );
+}
+
+async function flushDemoDurableUserSaveV60821(reason='save'){
+  if(!demoDurableFlushEligibleV60821())return false;
+  if(demoDurableFlushRunningV60821){
+    demoDurableFlushQueuedV60821=true;
+    return false;
+  }
+
+  demoDurableFlushRunningV60821=true;
+  demoDurableFlushQueuedV60821=false;
+  clearTimeout(demoDurableFlushTimerV60821);
+  demoDurableFlushTimerV60821=null;
+
+  let corePending=demoDurableCorePendingV60821();
+  let operationalPending=demoDurableOperationalPendingV60821();
+  let coreOk=true;
+  let operationalOk=true;
+  let errorText='';
+
+  try{
+    // Repair only current/live Billing Profile references before the save.
+    // Historical snapshots remain untouched by the existing repair layer.
+    try{window.__tuinbooksDemoBillingProfileRepair?.repair?.();}catch(_){}
+
+    corePending=demoDurableCorePendingV60821();
+    operationalPending=demoDurableOperationalPendingV60821();
+
+    if(corePending){
+      coreOk=await syncCoreSnapshotV28(true);
+    }
+    if(operationalPending){
+      operationalOk=await syncOperationalSnapshotV41(true);
+    }
+
+    // A successful save can expose a second small delta created by existing
+    // inheritance/reconciliation wrappers. Flush it once instead of leaving it
+    // for another page interaction.
+    if(coreOk&&demoDurableCorePendingV60821()){
+      coreOk=await syncCoreSnapshotV28(true);
+    }
+    if(operationalOk&&demoDurableOperationalPendingV60821()){
+      operationalOk=await syncOperationalSnapshotV41(true);
+    }
+
+    return coreOk&&operationalOk;
+  }catch(error){
+    errorText=String(error?.message||error||'');
+    console.error('[TuinBooks] Demo durable save v60.8.21 failed',error);
+    return false;
+  }finally{
+    demoDurableFlushLastV60821={
+      at:new Date().toISOString(),
+      reason,
+      corePending,
+      operationalPending,
+      coreOk,
+      operationalOk,
+      error:errorText
+    };
+    demoDurableFlushRunningV60821=false;
+    if(demoDurableFlushQueuedV60821){
+      demoDurableFlushQueuedV60821=false;
+      setTimeout(()=>flushDemoDurableUserSaveV60821('queued-save'),80);
+    }
+  }
+}
+
+function queueDemoDurableUserSaveV60821(reason='save'){
+  if(!demoDurableFlushEligibleV60821())return false;
+  const corePending=demoDurableCorePendingV60821();
+  const operationalPending=demoDurableOperationalPendingV60821();
+  if(!corePending&&!operationalPending)return false;
+
+  clearTimeout(demoDurableFlushTimerV60821);
+  demoDurableFlushTimerV60821=setTimeout(
+    ()=>flushDemoDurableUserSaveV60821(reason),
+    120
+  );
+  return true;
+}
+
+save=function saveV60821(){
+  const result=saveBeforeV60821();
+  queueDemoDurableUserSaveV60821('save');
+  return result;
+};
+
+window.__tuinbooksDemoDurableFlushV60821={
+  build:TUINBOOKS_DEMO_DURABLE_FLUSH_V60821,
+  eligible:()=>demoDurableFlushEligibleV60821(),
+  corePending:()=>demoDurableCorePendingV60821(),
+  operationalPending:()=>demoDurableOperationalPendingV60821(),
+  flush:(reason='manual')=>flushDemoDurableUserSaveV60821(reason),
+  last:()=>({...demoDurableFlushLastV60821})
+};
+
+/* Runtime release authority must remain last. */
+window.__TUINBOOKS_RELEASE__=TUINBOOKS_DEMO_DURABLE_FLUSH_V60821;
+window.__tuinbooksDemoDurableSaveBuild=TUINBOOKS_DEMO_DURABLE_FLUSH_V60821;

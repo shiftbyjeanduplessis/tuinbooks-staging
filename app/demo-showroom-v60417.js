@@ -518,6 +518,47 @@
     healthy:showroomBaselineHealthy
   };
 
+
+  const DEMO_SHOWROOM_HYDRATION_GATE_V60824='60.8.24-demo-showroom-hydration-gate';
+  let hydrationRetryTimerV60824=null;
+  let hydrationRetryCountV60824=0;
+
+  function showroomCloudHydratedV60824(){
+    const b=backend();
+    if(!b?.businessId||b.mode!=='supabase')return false;
+    if(b.hydrating===true)return false;
+    if(b.managementCoreHydratingV6089===true)return false;
+    if(b.managementLoadPromiseV5936)return false;
+
+    const params=new URLSearchParams(location.search);
+    const management=params.get('support')==='1';
+
+    // Management sets businessId before it has finished loading the customer's
+    // authoritative core and operational rows. The old showroom watcher saw
+    // businessId and could reset the Demo while that load was still in flight.
+    if(management&&b.managementOperationalLoadRequiredV59371===true&&
+       b.managementOperationalReadyV59371!==true)return false;
+
+    return true;
+  }
+
+  function queueHydratedDemoInstallV60824(){
+    clearTimeout(hydrationRetryTimerV60824);
+    hydrationRetryCountV60824+=1;
+    if(hydrationRetryCountV60824>240){
+      console.warn('[TuinBooks demo showroom] cloud hydration gate timed out; automatic reset skipped');
+      return;
+    }
+    hydrationRetryTimerV60824=setTimeout(()=>installDemoUI(),250);
+  }
+
+  window.__tuinbooksDemoShowroomHydrationGateV60824={
+    build:DEMO_SHOWROOM_HYDRATION_GATE_V60824,
+    ready:showroomCloudHydratedV60824,
+    hasUserEdits:showroomHasUserEditsV60823,
+    healthy:showroomBaselineHealthy
+  };
+
   async function ensureShowroomBaselineOnEntry(){
     if(!adminReady()||showroomBaselineHealthy())return true;
     let already=false;try{already=sessionStorage.getItem('tuinbooks-demo-baseline-v60417')==='attempted';}catch(_){ }
@@ -532,6 +573,19 @@
 
   async function installDemoUI(){
     if(!isDemo())return;
+
+    // v60.8.24: businessId is published before Management has finished loading
+    // authoritative cloud rows. Never make a destructive showroom reset
+    // decision against seed/partially hydrated state.
+    if(!showroomCloudHydratedV60824()){
+      queueHydratedDemoInstallV60824();
+      return;
+    }
+
+    hydrationRetryCountV60824=0;
+    clearTimeout(hydrationRetryTimerV60824);
+    hydrationRetryTimerV60824=null;
+
     installResetButton();
     const healthy=showroomBaselineHealthy();
     if(!healthy){
@@ -550,8 +604,13 @@
     let tries=0;
     const timer=setInterval(()=>{
       tries+=1;
-      if(isDemo()&&backend()?.businessId){clearInterval(timer);installDemoUI();}
-      else if(tries>100)clearInterval(timer);
+      if(isDemo()&&showroomCloudHydratedV60824()){
+        clearInterval(timer);
+        installDemoUI();
+      }else if(tries>240){
+        clearInterval(timer);
+        console.warn('[TuinBooks demo showroom] authoritative cloud state did not become ready; automatic reset skipped');
+      }
     },250);
   }
 

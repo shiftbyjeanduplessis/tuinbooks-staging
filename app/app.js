@@ -29612,3 +29612,42 @@ window.__tuinbooksBasketPersistenceV60829={
 /* Runtime release authority — TuinBooks v60.8.30 */
 window.__TUINBOOKS_RELEASE__='60.8.30-basket-restore-flag-repair';
 window.__tuinbooksBasketRestoreBuild='60.8.30-basket-restore-flag-repair';
+
+/* TuinBooks v60.8.31 — keep Schedule-only UI out of Settings and other views. */
+const TUINBOOKS_SETTINGS_VIEW_CLEANUP_V60831='60.8.31-settings-view-cleanup';
+const showViewBeforeV60831=showView;
+
+function clearScheduleViewUiV60831(){
+  try{if(window.isScheduleDragModeV6059?.())window.toggleScheduleDragModeV6059?.(false);}catch(_){ }
+  try{window.clearScheduleDragSelectionV6065?.();}catch(_){ }
+  try{window.endScheduleDrag?.();}catch(_){ }
+  try{selectedScheduleDetailV23=null;}catch(_){ }
+  try{$('scheduleDetailPanel')?.classList.add('hidden');}catch(_){ }
+  try{document.querySelector('.schedule-control-room')?.classList.remove('detail-open');}catch(_){ }
+  try{document.querySelector('#scheduleInfoTooltipV59384')?.setAttribute('hidden','');}catch(_){ }
+  try{
+    document.body?.classList.remove(
+      'schedule-zoom-open','schedule-drag-active','schedule-dragging-v5537',
+      'schedule-drag-mode-active-v6059','schedule-drag-mode-active-v6061',
+      'schedule-drag-mode-active-v6086','schedule-select-mode-v59320'
+    );
+  }catch(_){ }
+}
+
+showView=function showViewV60831(requested){
+  const target=typeof normaliseDesktopViewV59671==='function'
+    ? normaliseDesktopViewV59671(requested)
+    : String(requested||'');
+  if(target!=='schedule')clearScheduleViewUiV60831();
+  const result=showViewBeforeV60831(requested);
+  qsa('.app-view').forEach(node=>{
+    const active=node.id===`view-${target}`;
+    node.classList.toggle('active',active);
+    node.setAttribute('aria-hidden',active?'false':'true');
+  });
+  return result;
+};
+window.showView=showView;
+window.clearScheduleViewUiV60831=clearScheduleViewUiV60831;
+window.__TUINBOOKS_RELEASE__=TUINBOOKS_SETTINGS_VIEW_CLEANUP_V60831;
+window.__tuinbooksSettingsViewCleanupBuild=TUINBOOKS_SETTINGS_VIEW_CLEANUP_V60831;

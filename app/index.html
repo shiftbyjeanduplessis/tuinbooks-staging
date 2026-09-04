@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>TuinBooks â€” Admin</title>
+  <title>TuinBooks — Admin</title>
   <link rel="stylesheet" href="styles.css?v=59.6.89-support-route-restore">
   <link rel="stylesheet" href="schedule-foundation.css?v=59.6.9-quote-status-acceptance-cleanup">
   <link rel="icon" type="image/png" href="tuinbooks-icon.png">
@@ -12,6 +12,9 @@
   <link rel="stylesheet" href="support-management-ui.css?v=59.6.9-quote-status-acceptance-cleanup">
   <meta name="theme-color" content="#1f6f54">
 <style id="v58928-missed-schedule-styles">
+/* A view that is not active must never leak fixed/sticky Schedule UI into
+   another section (notably Settings after using drag mode). */
+.app-view:not(.active){display:none!important;visibility:hidden!important}
 /* Past work with no final outcome must remain unmistakably visible. */
 .schedule-card-clean.missed-unresolved-v58928{
   --team-color:#b42318!important;
@@ -449,7 +452,7 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
       <button data-view="business" class="nav-tab">Business</button>
     </nav>
     <div class="header-actions">
-      <button type="button" class="icon-button header-settings-button" id="headerSettingsBtnV58930" aria-label="Open Settings" title="Settings">âš™</button>
+      <button type="button" class="icon-button header-settings-button" id="headerSettingsBtnV58930" aria-label="Open Settings" title="Settings">&#9881;</button>
       <div id="backendAccountBar" class="backend-account-bar hidden">
         <span id="backendSyncState" class="backend-sync-state saved">Workspace ready</span>
         <button type="button" class="button secondary compact" id="backendSignOutBtn">Sign out</button>
@@ -1846,7 +1849,7 @@ body:has(#quickQuoteDialogV59400[open]){overflow:hidden!important}
   <script src="supabase-config.js"></script>
   <script src="schedule-read-v60522.js?v=60.5.22"></script>
   <script>window.__TUINBOOKS_INDEX_RELEASE__='60.8.22-demo-durable-flush-scope-fix';window.__TUINBOOKS_SCHEDULE_RELEASE__='60.7.44';</script>
-  <script src="app.js?v=60.8.30-basket-restore-flag-repair"></script>
+  <script src="app.js?v=60.8.31-settings-view-cleanup"></script>
   <script src="demo-billing-profile-repair-v6047.js?v=60.4.7-demo-billing-profile-repair"></script>
   <script src="ui-hotfix-58949.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
   <script src="ui-refine-58953.js?v=59.6.9-quote-status-acceptance-cleanup"></script>
